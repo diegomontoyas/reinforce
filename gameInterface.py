@@ -15,5 +15,5 @@ class GameInterface:
     def action_space_length(self) -> int:
         raise NotImplementedError
 
-    def feature_vector_length(self) -> int:
+    def state_shape(self) -> tuple:
         raise NotImplementedError

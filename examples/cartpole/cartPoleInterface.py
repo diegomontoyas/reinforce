@@ -23,8 +23,8 @@ class CartPoleGameInterface(GameInterface):
     def action_space_length(self) -> int:
         return self._action_space_length
 
-    def feature_vector_length(self) -> int:
-        return self._feature_vector_length
+    def state_shape(self) -> tuple:
+        return self._feature_vector_length,
 
     def run(self, action_provider: ActionProvider, display: bool, num_episodes: int = None):
 
@@ -39,7 +39,7 @@ class CartPoleGameInterface(GameInterface):
             max_time = 2000
             for time_t in range(max_time):
                 if display:
-                    pixel_matrix = self.env.render(mode="rgb_array")
+                    self.env.render()
 
                 # Decide action
                 action = action_provider.action(state)
@@ -61,14 +61,6 @@ class CartPoleGameInterface(GameInterface):
                     # print the score and break out of the loop
                     print("Game finished with score: {}".format(time_t + reward))
                     break
-
-    def normalize_state(self, state: np.ndarray) -> np.ndarray:
-        cart_pos = utils.normalize_0_1(state[0], in_min=-2.4, in_max=2.4)
-        cart_vel = utils.normalize_0_1(state[1], in_min=-10000, in_max=10000)
-        pole_angle = utils.normalize_0_1(state[2], in_min=-41.8, in_max=41.8)
-        pole_vel_tip = utils.normalize_0_1(state[3], in_min=-10000, in_max=10000)
-
-        return np.array([cart_pos, cart_vel, pole_angle, pole_vel_tip])
 
     def stop(self):
         self._should_run = False

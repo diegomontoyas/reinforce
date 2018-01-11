@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 
 from actionProvider import ActionProvider
+from epsilonFunctions.epsilonChangeFunction import EpsilonChangeFunction
 from transition import Transition
 from gameInterface import GameInterface
 from gameDelegate import GameDelegate
@@ -17,11 +18,9 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
                  model,
                  game: GameInterface,
                  transitions_per_episode: int,
+                 epsilon_function: EpsilonChangeFunction,
                  batch_size: int = 32,
                  discount: float = 0.95,
-                 initial_epsilon: float = 1,
-                 final_epsilon: float = 0.01,
-                 epsilon_decay_multiplier: float = 0.995,
                  replay_memory_max_size=2000):
 
         super().__init__()
@@ -31,9 +30,7 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
         self._batch_size = batch_size
         self._replay_memory = deque(maxlen=replay_memory_max_size)
         self._discount = discount
-        self._epsilon = initial_epsilon
-        self._final_epsilon = final_epsilon
-        self._epsilon_decay_multiplier = epsilon_decay_multiplier
+        self._epsilon_function = epsilon_function
         self._transitions_per_episode = transitions_per_episode
 
         self._num_transitions_since_last_training = 0
@@ -80,14 +77,14 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
             batch_previous_states.append(transition.previous_state)
             batch_updated_Q_values.append(predicted_Q_values)
 
-        self._update_epsilon()
+        self._epsilon_function.step()
         self._session_num_completed_episodes += 1
         self._num_transitions_since_last_training = 0
 
         loss = self._model.model.train_on_batch(x=np.array(batch_previous_states),
                                                   y=np.array(batch_updated_Q_values))
 
-        self._log(num_episodes=self._session_num_completed_episodes, epsilon=self._epsilon, loss=loss)
+        self._log(num_episodes=self._session_num_completed_episodes, epsilon=self.epsilon(), loss=loss)
 
         self.delegate.trainer_did_finish_training_episode(trainer=self, episode=self._session_num_completed_episodes)
 
@@ -95,14 +92,6 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
             self._finish_training()
 
         return loss
-
-    def _update_epsilon(self):
-        """
-        Decreases the epsilon value by `epsilon_decay_multiplier`
-        """
-
-        if self._epsilon > self._final_epsilon:
-            self._epsilon *= self._epsilon_decay_multiplier
 
     def _finish_training(self):
         self._session_num_completed_episodes = 0
@@ -117,7 +106,7 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
         :param epsilon: (Optional) Epsilon to use. If not provided the current training epsilon is used
         :return: The action to take
         """
-        epsilon = epsilon or self._epsilon
+        epsilon = epsilon or self.epsilon()
 
         if np.random.rand() <= epsilon:
             return random.randrange(self._game.action_space_length())
@@ -133,8 +122,11 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
         self._session_target_num_episodes = num_episodes
         self._game.run(action_provider=self, display=display)
 
+    def epsilon(self) -> float:
+        return self._epsilon_function.epsilon()
+
     # +-------------------------------------+
-    # |      GAME INTERFACE OBSERVER        |
+    # |      GAME INTERFACE DELEGATE        |
     # +-------------------------------------+
 
     def game_did_receive_update(self, game: GameInterface, transition: Transition):
