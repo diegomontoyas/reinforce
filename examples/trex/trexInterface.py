@@ -27,15 +27,18 @@ class CartPoleGameInterface(GameInterface):
         self._feature_vector_length = self.env.observation_space.shape[0]
         self._action_space_length = self.env.action_space.n
 
+    @property
     def action_space_length(self) -> int:
         return self._action_space_length
 
+    @property
     def feature_vector_length(self) -> int:
         return self._feature_vector_length
 
     def run(self, action_provider: ActionProvider, display: bool, num_episodes: int = None):
 
         self._should_run = True
+
         thread = threading.Thread(target=self._run, args=(action_provider, display, num_episodes))
         thread.run()
 

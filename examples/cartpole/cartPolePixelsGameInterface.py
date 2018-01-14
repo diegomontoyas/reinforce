@@ -4,7 +4,6 @@ import threading
 import gym
 import numpy as np
 
-import utils
 from actionProvider import ActionProvider
 from gameInterface import GameInterface
 from transition import Transition
@@ -18,14 +17,14 @@ class CartPolePixelsGameInterface(GameInterface):
         self.env = gym.make("CartPole-v1")
         self.env.reset()
 
-        self._should_run = False
-
         self._state_shape = self.current_state().shape
         self._action_space_length = self.env.action_space.n
 
+    @property
     def action_space_length(self) -> int:
         return self._action_space_length
 
+    @property
     def state_shape(self) -> tuple:
         return self._state_shape
 
@@ -76,6 +75,3 @@ class CartPolePixelsGameInterface(GameInterface):
 
     def to_grayscale(self, rgb_matrix: np.ndarray):
         return np.dot(rgb_matrix[..., :3], [.3, .6, .1])
-
-    def stop(self):
-        self._should_run = False

@@ -1,21 +1,33 @@
+import multiprocessing
 import random
-import threading
 from collections import deque
+from multiprocessing import Process
+from threading import Thread
 from typing import List
+import os
 
+import keras
 import numpy as np
 
 from actionProvider import ActionProvider
 from epsilonFunctions.epsilonChangeFunction import EpsilonChangeFunction
-from transition import Transition
-from gameInterface import GameInterface
 from gameDelegate import GameDelegate
+from gameInterface import GameInterface
 from trainer import Trainer
+from transition import Transition
+
+
+def action(state: np.ndarray, model: keras.Model, epsilon: float, action_space_length: int) -> int:
+    if np.random.rand() <= epsilon:
+        return random.randrange(action_space_length)
+
+    q_values = model.predict(np.array([state]))[0]
+    return int(np.argmax(q_values))
 
 
 class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
     def __init__(self,
-                 model,
+                 model: keras.Model,
                  game: GameInterface,
                  transitions_per_episode: int,
                  epsilon_function: EpsilonChangeFunction,
@@ -37,8 +49,13 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
         self._session_num_completed_episodes = 0
         self._session_target_num_episodes = 0
 
-        self._training_thread = None
+        self._game_for_preview = None
+        self._episodes_between_previews = None
+        self._preview_num_episodes = 1
+
         self._game.delegate = self
+
+        self._model_updates_queue = multiprocessing.Queue(maxsize=1)
 
     def _process_transition(self, transition: Transition):
         self._replay_memory.append(transition)
@@ -46,7 +63,6 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
 
         if self._num_transitions_since_last_training >= self._transitions_per_episode \
                 and len(self._replay_memory) > self._batch_size:
-
             mini_batch = random.sample(self._replay_memory, self._batch_size)
             self._train(mini_batch)
 
@@ -60,14 +76,14 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
         batch_previous_states = []
 
         for transition in transitions_batch:
-            predicted_Q_values = self._model.model.predict(np.array([transition.previous_state]))[0]
+            predicted_Q_values = self._model.predict(np.array([transition.previous_state]))[0]
 
             # Update rule
             if transition.is_new_state_final:
                 updated_Q_value_prediction = transition.reward
 
             else:
-                predicted_next_actions_Q_values = self._model.model.predict(np.array([transition.new_state]))[0]
+                predicted_next_actions_Q_values = self._model.predict(np.array([transition.new_state]))[0]
                 max_next_action_Q_Value = max(predicted_next_actions_Q_values)
 
                 updated_Q_value_prediction = (transition.reward + self._discount * max_next_action_Q_Value)
@@ -81,10 +97,14 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
         self._session_num_completed_episodes += 1
         self._num_transitions_since_last_training = 0
 
-        loss = self._model.model.train_on_batch(x=np.array(batch_previous_states),
-                                                  y=np.array(batch_updated_Q_values))
+        loss = self._model.train_on_batch(x=np.array(batch_previous_states),
+                                                y=np.array(batch_updated_Q_values))
 
         self._log(num_episodes=self._session_num_completed_episodes, epsilon=self.epsilon(), loss=loss)
+
+        if self._episodes_between_previews is not None \
+                and self._session_num_completed_episodes % self._episodes_between_previews == 0:
+            self.preview()
 
         self.delegate.trainer_did_finish_training_episode(trainer=self, episode=self._session_num_completed_episodes)
 
@@ -97,38 +117,56 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
         self._session_num_completed_episodes = 0
         self._session_target_num_episodes = 0
         self._game.stop()
+        self._game_for_preview = None
+
         self.delegate.trainer_did_finish_training(trainer=self)
 
-    def action(self, state, epsilon: float = None):
+    def action(self, state, epsilon: float = None) -> int:
         """
         Decides an action for the state provided
         :param state: State for which to choose an action
         :param epsilon: (Optional) Epsilon to use. If not provided the current training epsilon is used
         :return: The action to take
         """
-        epsilon = epsilon or self.epsilon()
+        if epsilon is None:
+            epsilon = self.epsilon()
 
-        if np.random.rand() <= epsilon:
-            return random.randrange(self._game.action_space_length())
+        return action(state, self._model, epsilon, self._game.action_space_length)
 
-        q_values = self._model.predict(np.array([state]))[0]
-        return int(np.argmax(q_values))
+    def train(self, num_episodes: int, game_for_preview: GameInterface,
+              episodes_between_previews: int = None, preview_num_episodes: int = 1):
 
-    def train(self, num_episodes: int, display: bool):
         if self._session_num_completed_episodes != 0:
             return
 
         self._session_num_completed_episodes = 0
         self._session_target_num_episodes = num_episodes
-        self._game.run(action_provider=self, display=display)
+
+        self._game_for_preview = game_for_preview
+        self._episodes_between_previews = episodes_between_previews
+        self._preview_num_episodes = preview_num_episodes
+
+        self._game.run(action_provider=self, display=False)
 
     def epsilon(self) -> float:
         return self._epsilon_function.epsilon()
+
+    def preview(self):
+        action_provider = Epsilon0ActionProvider(self._model, self._game.action_space_length)
+        self._game_for_preview.run(action_provider, display=True, num_episodes=self._preview_num_episodes)
 
     # +-------------------------------------+
     # |      GAME INTERFACE DELEGATE        |
     # +-------------------------------------+
 
     def game_did_receive_update(self, game: GameInterface, transition: Transition):
-        self._training_thread = threading.Thread(target=self._process_transition, args=[transition])
-        self._training_thread.run()
+        self._process_transition(transition)
+
+
+class Epsilon0ActionProvider(ActionProvider):
+    def __init__(self, model: keras.Model, action_space_length):
+        self._model = model
+        self._action_space_length = action_space_length
+
+    def action(self, state: np.ndarray) -> int:
+        return action(state=state, model=self._model, epsilon=0, action_space_length=self._action_space_length)

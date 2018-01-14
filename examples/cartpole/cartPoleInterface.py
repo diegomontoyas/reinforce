@@ -1,12 +1,12 @@
 
 import threading
 
+import asyncio
 import gym
-import numpy as np
+import time
 
-import utils
-from actionProvider import ActionProvider
-from gameInterface import GameInterface
+from dispatch import Dispatch
+from gameInterface import *
 from transition import Transition
 
 
@@ -16,23 +16,22 @@ class CartPoleGameInterface(GameInterface):
         super().__init__()
 
         self.env = gym.make("CartPole-v1")
-        self._should_run = False
         self._feature_vector_length = self.env.observation_space.shape[0]
         self._action_space_length = self.env.action_space.n
 
+    @property
     def action_space_length(self) -> int:
         return self._action_space_length
 
+    @property
     def state_shape(self) -> tuple:
         return self._feature_vector_length,
 
     def run(self, action_provider: ActionProvider, display: bool, num_episodes: int = None):
 
+        n=0
         self._should_run = True
-        thread = threading.Thread(target=self._run, args=(action_provider, display, num_episodes))
-        thread.run()
 
-    def _run(self, action_provider: ActionProvider, display: bool, num_episodes=None):
         while self._should_run:
             state = self.env.reset()
 
@@ -52,15 +51,20 @@ class CartPoleGameInterface(GameInterface):
                     reward = -500
 
                 transition = Transition(state, action, reward, next_state, is_final)
-                self.delegate.game_did_receive_update(self, transition)
+
+                if self.delegate:
+                    self.delegate.game_did_receive_update(self, transition)
 
                 # make next_state the new current state for the next frame.
                 state = next_state
 
                 if is_final:
-                    # print the score and break out of the loop
-                    print("Game finished with score: {}".format(time_t + reward))
+                    if display:
+                        print("Game finished with score: {}".format(time_t + reward))
+
                     break
 
-    def stop(self):
-        self._should_run = False
+            n += 1
+
+            if num_episodes is not None and n == num_episodes:
+                self._should_run = False
