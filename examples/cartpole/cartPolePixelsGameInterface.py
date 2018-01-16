@@ -31,11 +31,8 @@ class CartPolePixelsGameInterface(GameInterface):
     def run(self, action_provider: ActionProvider, display: bool, num_episodes: int = None):
 
         self._should_run = True
-        thread = threading.Thread(target=self._run, args=(action_provider, display, num_episodes))
-        thread.run()
 
-    def _run(self, action_provider: ActionProvider, display: bool, num_episodes=None):
-
+        n=0
         while self._should_run:
             self.env.reset()
             state = self.current_state()
@@ -58,15 +55,23 @@ class CartPolePixelsGameInterface(GameInterface):
                     reward = -500
 
                 transition = Transition(state, action, reward, next_state, is_final)
-                self.delegate.game_did_receive_update(self, transition)
+
+                if self.delegate is not None:
+                    self.delegate.game_did_receive_update(self, transition)
 
                 # make next_state the new current state for the next frame.
                 state = next_state
 
                 if is_final:
-                    # print the score and break out of the loop
-                    print("Game finished with score: {}".format(time_t + reward))
+                    if display:
+                        print("Game finished with score: {}".format(time_t + reward))
+
                     break
+
+            n += 1
+
+            if num_episodes is not None and n == num_episodes:
+                self._should_run = False
 
     def current_state(self) -> np.ndarray:
         state = self.env.render(mode="rgb_array")

@@ -20,7 +20,7 @@ class TrainingRoom(TrainerDelegate):
         epsilon_function = ConstMultiplierEpsilonDecayFunction(
             initial_value=1,
             final_value=0.01,
-            decay_multiplier=0.991
+            decay_multiplier=0.995
         )
 
         self.trainer = DeepQLearningTrainer(
@@ -38,7 +38,7 @@ class TrainingRoom(TrainerDelegate):
     def build_model(self):
         model = Sequential()
 
-        shape = self.game.state_shape()
+        shape = self.game.state_shape
 
         model.add(Convolution2D(filters=32, kernel_size=8, strides=8, padding='same',
                                 input_shape=(shape[0], shape[1], 1)))
@@ -58,7 +58,8 @@ class TrainingRoom(TrainerDelegate):
         return model
 
     def start_training(self):
-        self.trainer.train(num_episodes=50000, display=True)
+        self.trainer.train(num_episodes=100000, game_for_preview=CartPolePixelsGameInterface(),
+                           episodes_between_previews=100, preview_num_episodes=1)
 
     def trainer_did_finish_training(self, trainer: Trainer):
         pass
