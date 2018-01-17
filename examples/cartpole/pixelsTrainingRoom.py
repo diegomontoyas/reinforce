@@ -53,8 +53,7 @@ class TrainingRoom(TrainerDelegate):
         model.add(Activation('relu'))
         model.add(Dense(2))
 
-        adam = Adam(lr=0.001)
-        model.compile(loss='mse', optimizer=adam)
+        model.compile(loss='mse', optimizer=Adam(lr=1e-6))
         return model
 
     def start_training(self):

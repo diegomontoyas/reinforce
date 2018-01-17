@@ -3,20 +3,25 @@ import threading
 
 import gym
 import numpy as np
+import PIL.Image
 
 from actionProvider import ActionProvider
 from gameInterface import GameInterface
 from transition import Transition
 
+import skimage.color
+import skimage.transform
 
 class CartPolePixelsGameInterface(GameInterface):
 
-    def __init__(self):
+    def __init__(self, num_state_frames=4):
         super().__init__()
 
         self.env = gym.make("CartPole-v1")
         self.env.reset()
 
+        self._frame_buffer = []
+        self._num_state_frames = num_state_frames
         self._state_shape = self.current_state().shape
         self._action_space_length = self.env.action_space.n
 
@@ -35,13 +40,12 @@ class CartPolePixelsGameInterface(GameInterface):
         n=0
         while self._should_run:
             self.env.reset()
-            state = self.current_state()
 
             max_time = 2000
             for time_t in range(max_time):
 
-                if display:
-                    state = self.current_state()
+                state = self.current_state()
+                self._frame_buffer.append(state)
 
                 # Decide action
                 action = action_provider.action(state)
@@ -74,9 +78,13 @@ class CartPolePixelsGameInterface(GameInterface):
                 self._should_run = False
 
     def current_state(self) -> np.ndarray:
-        state = self.env.render(mode="rgb_array")
-        shape = state.shape
-        return self.to_grayscale(state).reshape(shape[0], shape[1], 1)
+        return self.current_state_frame()
 
-    def to_grayscale(self, rgb_matrix: np.ndarray):
-        return np.dot(rgb_matrix[..., :3], [.3, .6, .1])
+    def current_state_frame(self) -> np.ndarray:
+        original = self.env.render(mode="rgb_array")
+        grayscale = skimage.color.rgb2gray(original)
+
+        resized = skimage.transform.resize(grayscale, (80, 120))
+        shape = resized.shape
+
+        return resized.reshape(shape[0], shape[1], 1)
