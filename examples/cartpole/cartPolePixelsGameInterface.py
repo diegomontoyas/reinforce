@@ -3,7 +3,6 @@ import threading
 
 import gym
 import numpy as np
-import PIL.Image
 
 from actionProvider import ActionProvider
 from gameInterface import GameInterface
@@ -45,7 +44,6 @@ class CartPolePixelsGameInterface(GameInterface):
             for time_t in range(max_time):
 
                 state = self.current_state()
-                self._frame_buffer.append(state)
 
                 # Decide action
                 action = action_provider.action(state)
