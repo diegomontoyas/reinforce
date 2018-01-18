@@ -82,7 +82,7 @@ class CartPolePixelsGameInterface(GameInterface):
         original = self.env.render(mode="rgb_array")
         grayscale = skimage.color.rgb2gray(original)
 
-        resized = skimage.transform.resize(grayscale, (80, 120))
+        resized = skimage.transform.resize(grayscale, (200, 300))
         shape = resized.shape
 
         return resized.reshape(shape[0], shape[1], 1)

@@ -1,6 +1,6 @@
 from keras import Sequential
 from keras.layers import Dense, Convolution2D, Activation, Flatten
-from keras.optimizers import Adam, SGD
+from keras.optimizers import Adam, SGD, RMSprop
 
 from epsilonFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
 from examples.cartpole.cartPoleInterface import CartPoleGameInterface
@@ -40,20 +40,18 @@ class TrainingRoom(TrainerDelegate):
 
         shape = self.game.state_shape
 
-        model.add(Convolution2D(filters=32, kernel_size=8, strides=8, padding='same',
+        model.add(Convolution2D(filters=32, kernel_size=8, strides=8, activation='relu',
                                 input_shape=(shape[0], shape[1], 1)))
 
-        model.add(Activation('relu'))
-        model.add(Convolution2D(filters=64, kernel_size=4, strides=4, padding='same'))
-        model.add(Activation('relu'))
-        model.add(Convolution2D(filters=64, kernel_size=3, strides=3, padding='same'))
-        model.add(Activation('relu'))
-        model.add(Flatten())
-        model.add(Dense(512))
-        model.add(Activation('relu'))
-        model.add(Dense(2))
+        model.add(Convolution2D(filters=64, kernel_size=4, strides=4, activation='relu'))
+        model.add(Convolution2D(filters=64, kernel_size=3, strides=3, activation='relu'))
 
-        model.compile(loss='mse', optimizer=Adam(lr=1e-6))
+        model.add(Flatten())
+        model.add(Dense(512, activation='relu'))
+        model.add(Dense(2))
+        model.summary()
+
+        model.compile(loss='mse', optimizer=RMSprop(lr=0.00025, epsilon=0.01))
         return model
 
     def start_training(self):
