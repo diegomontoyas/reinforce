@@ -133,7 +133,7 @@ class DeepQLearningTrainer(Trainer, GameDelegate, ActionProvider):
 
         return action(state, self._model, epsilon, self._game.action_space_length)
 
-    def train(self, num_episodes: int, game_for_preview: GameInterface,
+    def train(self, num_episodes: int, game_for_preview: GameInterface = None,
               episodes_between_previews: int = None, preview_num_episodes: int = 1):
 
         if self._session_num_completed_episodes != 0:
