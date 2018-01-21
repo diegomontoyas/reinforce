@@ -40,10 +40,10 @@ class CartPolePixelsGameInterface(GameInterface):
         while self._should_run:
             self.env.reset()
 
+            state = self.current_state()
+
             max_time = 2000
             for time_t in range(max_time):
-
-                state = self.current_state()
 
                 # Decide action
                 action = action_provider.action(state)
@@ -82,7 +82,8 @@ class CartPolePixelsGameInterface(GameInterface):
         original = self.env.render(mode="rgb_array")
         grayscale = skimage.color.rgb2gray(original)
 
-        resized = skimage.transform.resize(grayscale, (200, 300))
+        cropped = grayscale[100:300]
+        resized = skimage.transform.resize(grayscale, (len(cropped), 300))
         shape = resized.shape
 
         return resized.reshape(shape[0], shape[1], 1)
