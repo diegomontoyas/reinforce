@@ -1,13 +1,12 @@
 from keras import Sequential
 from keras.layers import Dense, Convolution2D, Activation, Flatten, MaxPooling2D
 from keras.optimizers import Adam
+from trainerDelegate import TrainerDelegate
 
 from deepQLearningTrainer import DeepQLearningTrainer
 from epsilonFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
-from examples.cartpole.cartPolePixelsGameInterface import CartPolePixelsGameInterface
-from trainer import Trainer
-from trainerDelegate import TrainerDelegate
 from examples.trex.trexInterface import TrexGameInterface
+from trainer import Trainer
 
 
 class TrainingRoom(TrainerDelegate):
@@ -59,10 +58,7 @@ class TrainingRoom(TrainerDelegate):
         return model
 
     def start_training(self):
-        self.trainer.train(num_episodes=100000)
-
-    def trainer_did_finish_training(self, trainer: Trainer):
-        pass
+        self.trainer.train(target_episodes=100000)
 
 
 if __name__ == "__main__":

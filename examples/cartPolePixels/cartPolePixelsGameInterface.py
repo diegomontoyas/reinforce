@@ -54,7 +54,7 @@ class CartPolePixelsGameInterface(GameInterface):
                 next_state = self.current_state()
 
                 if is_final and time_t < 500:
-                    reward = -500
+                    reward = -2000
 
                 transition = Transition(state, action, reward, next_state, is_final)
 
@@ -86,4 +86,4 @@ class CartPolePixelsGameInterface(GameInterface):
         resized = skimage.transform.resize(grayscale, (len(cropped), 300))
         shape = resized.shape
 
-        return resized.reshape(shape[0], shape[1], 1)
+        return np.array(resized).flatten()

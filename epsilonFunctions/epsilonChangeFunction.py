@@ -7,5 +7,6 @@ class EpsilonChangeFunction:
     def step(self) -> float:
         raise NotImplementedError
 
+    @property
     def epsilon(self) -> float:
         return self._epsilon

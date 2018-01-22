@@ -1,17 +1,15 @@
 from keras import Sequential
-from keras.layers import Dense, Convolution2D, Activation, Flatten
-from keras.optimizers import Adam, SGD, RMSprop
+from keras.layers import Dense
+from keras.optimizers import Adam
 
-from epsilonFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
-from examples.cartpole.cartPoleInterface import CartPoleGameInterface
 from deepQLearningTrainer import DeepQLearningTrainer
-from examples.cartpole.cartPolePixelsGameInterface import CartPolePixelsGameInterface
+from epsilonFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
+from examples.cartPolePixels.cartPolePixelsGameInterface import CartPolePixelsGameInterface
 from trainer import Trainer
 from trainerDelegate import TrainerDelegate
 
 
 class TrainingRoom(TrainerDelegate):
-
     def __init__(self):
         super().__init__()
         self.game = CartPolePixelsGameInterface()
@@ -40,23 +38,17 @@ class TrainingRoom(TrainerDelegate):
 
         shape = self.game.state_shape
 
-        model.add(Convolution2D(filters=32, kernel_size=8, strides=8, activation='relu',
-                                input_shape=(shape[0], shape[1], 1)))
+        model.add(Dense(128, input_dim=shape[0], activation='relu'))
+        model.add(Dense(64, activation='relu'))
+        model.add(Dense(self.game.action_space_length, activation='linear'))
 
-        model.add(Convolution2D(filters=64, kernel_size=4, strides=4, activation='relu'))
-        model.add(Convolution2D(filters=64, kernel_size=3, strides=3, activation='relu'))
-
-        model.add(Flatten())
-        model.add(Dense(512, activation='relu'))
-        model.add(Dense(2))
+        model.compile(loss='mse', optimizer=Adam(lr=0.001))
         model.summary()
-
-        model.compile(loss='mse', optimizer=RMSprop(lr=0.00025, epsilon=0.01))
         return model
 
     def start_training(self):
-        self.trainer.train(num_episodes=100000, game_for_preview=CartPolePixelsGameInterface(),
-                           episodes_between_previews=100, preview_num_episodes=1)
+        self.trainer.train(target_episodes=100000, game_for_preview=CartPolePixelsGameInterface(),
+                           episodes_between_previews=15, preview_num_episodes=1)
 
     def trainer_did_finish_training(self, trainer: Trainer):
         pass
