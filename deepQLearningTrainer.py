@@ -1,28 +1,19 @@
-import multiprocessing
-import random
-from collections import deque
-from multiprocessing import Process
-from threading import Thread
+import time
 from typing import List
-import os
 
 import keras
 import numpy as np
+import random
+from collections import deque
 
-from actionProvider import ActionProvider
-from epsilonFunctions.epsilonChangeFunction import EpsilonChangeFunction
+from actionProvider import ActionProvider, Epsilon0ActionProvider
+from epsilonChangeFunctions.epsilonChangeFunction import EpsilonChangeFunction
+from epsilonGreedyFunction import e_greedy_action
 from gameInterface import GameInterface
 from markovDecisionProcess import MarkovDecisionProcess
+from tensorboardLogger import TensorboardLogger
 from trainer import Trainer
 from transition import Transition
-
-
-def action(state: np.ndarray, model: keras.Model, epsilon: float, action_space_length: int) -> int:
-    if np.random.rand() <= epsilon:
-        return random.randrange(action_space_length)
-
-    q_values = model.predict(np.array([state]))[0]
-    return int(np.argmax(q_values))
 
 
 class DeepQLearningTrainer(Trainer):
@@ -36,9 +27,15 @@ class DeepQLearningTrainer(Trainer):
                  replay_memory_max_size=2000,
                  game_for_preview: GameInterface = None,
                  episodes_between_previews: int = None,
-                 preview_num_episodes: int = 1):
+                 preview_num_episodes: int = 1,
+                 log_analytics: bool = True,
+                 logging_dir: str = "./analytics"):
 
         super().__init__()
+
+        if log_analytics:
+            path = logging_dir + "/{}".format(time.strftime("%a %b %d, %Y, %I:%M:%S %p"))
+            self._logger = TensorboardLogger(log_dir=path)
 
         self._model = model
         self._game = game
@@ -62,6 +59,7 @@ class DeepQLearningTrainer(Trainer):
 
         self._game.reset()
 
+        current_transition = 0
         transitions_since_last_training = 0
 
         current_episode = 0
@@ -70,7 +68,15 @@ class DeepQLearningTrainer(Trainer):
             action_to_take = self._action(self._game.state())
             transition = self._game.take_action(action_to_take)
             self._replay_memory.append(transition)
+
             transitions_since_last_training += 1
+
+            if self._logger is not None:
+                self._logger.log_transition_data(transition=current_transition,
+                                                 training_episode=current_episode,
+                                                 reward=transition.reward)
+
+            current_transition += 1
 
             if transition.game_ended:
                 self._game.reset()
@@ -81,13 +87,22 @@ class DeepQLearningTrainer(Trainer):
                 mini_batch = random.sample(self._replay_memory, self._batch_size)
                 loss = self._train(mini_batch)
 
+                if self._logger is not None:
+                    self._logger.log_training_episode_data(episode=current_episode,
+                                                           loss=loss,
+                                                           epsilon=self._epsilon_function.epsilon)
+
+                self._print(num_episodes=current_episode,
+                            epsilon=self._epsilon_function.epsilon,
+                            loss=loss)
+
+                if self._episodes_between_previews is not None \
+                        and current_episode % self._episodes_between_previews == 0:
+
+                    self.preview(episode=current_episode)
+
                 transitions_since_last_training = 0
                 current_episode += 1
-
-                self._log(num_episodes=current_episode, epsilon=self._epsilon_function.epsilon, loss=loss)
-
-            if self._episodes_between_previews is not None and current_episode % self._episodes_between_previews == 0:
-                self.preview()
 
     def _train(self, transitions_batch: List[Transition]) -> float:
         """
@@ -122,17 +137,11 @@ class DeepQLearningTrainer(Trainer):
         return loss
 
     def _action(self, state) -> int:
-        return action(state, self._model, self._epsilon_function.epsilon, self._game.action_space_length)
+        return e_greedy_action(state, self._model, self._epsilon_function.epsilon, self._game.action_space_length)
 
-    def preview(self):
+    def preview(self, episode: int):
         action_provider = Epsilon0ActionProvider(self._model, self._game.action_space_length)
-        self._game_for_preview.display(action_provider, num_episodes=self._preview_num_episodes)
+        scores = self._game_for_preview.display(action_provider, num_episodes=self._preview_num_episodes)
 
-
-class Epsilon0ActionProvider(ActionProvider):
-    def __init__(self, model: keras.Model, action_space_length):
-        self._model = model
-        self._action_space_length = action_space_length
-
-    def action(self, state: np.ndarray) -> int:
-        return action(state=state, model=self._model, epsilon=0, action_space_length=self._action_space_length)
+        if scores is not None and self._logger is not None:
+            self._logger.log_epsilon_0_game_summary(training_episode=episode, final_score=np.array(scores).mean())
