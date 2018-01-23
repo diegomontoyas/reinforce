@@ -1,7 +1,6 @@
 from keras import Sequential
 from keras.layers import Dense, Convolution2D, Activation, Flatten, MaxPooling2D
 from keras.optimizers import Adam
-from trainerDelegate import TrainerDelegate
 
 from deepQLearningTrainer import DeepQLearningTrainer
 from epsilonFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
@@ -9,7 +8,7 @@ from examples.trex.trexInterface import TrexGameInterface
 from trainer import Trainer
 
 
-class TrainingRoom(TrainerDelegate):
+class TrainingRoom:
 
     def __init__(self):
         super().__init__()
@@ -26,27 +25,25 @@ class TrainingRoom(TrainerDelegate):
             model=model,
             game=self.game,
             epsilon_function=epsilon_function,
-            transitions_per_episode=2,
+            transitions_per_episode=1,
             batch_size=32,
             discount=0.95,
-            replay_memory_max_size=2000
+            replay_memory_max_size=2000,
+            game_for_preview=TrexGameInterface(),
+            episodes_between_previews=15,
+            preview_num_episodes=1
         )
-
-        self.trainer.delegate = self
 
     def build_model(self, num_actions):
         model = Sequential()
 
-        shape = self.game.state_shape
+        model.add(Convolution2D(filters=16, kernel_size=8, strides=8,
+                                input_shape=self.game.state_shape))
 
-        model.add(Convolution2D(filters=32, kernel_size=8, strides=8, input_shape=(shape[0], shape[1], 1)))
         model.add(Activation('relu'))
-        model.add(MaxPooling2D(pool_size=(3, 3), strides=2))
+        model.add(MaxPooling2D(pool_size=(5, 5), strides=5))
 
-        model.add(Convolution2D(filters=64, kernel_size=4, strides=4))
-        model.add(Activation('relu'))
-
-        model.add(Convolution2D(filters=64, kernel_size=3, strides=3))
+        model.add(Convolution2D(filters=16, kernel_size=2, strides=2))
         model.add(Activation('relu'))
 
         model.add(Flatten())
@@ -58,7 +55,7 @@ class TrainingRoom(TrainerDelegate):
         return model
 
     def start_training(self):
-        self.trainer.train(target_episodes=100000)
+        self.trainer.train(target_episodes=600000)
 
 
 if __name__ == "__main__":

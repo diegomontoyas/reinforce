@@ -67,7 +67,7 @@ function updateIconClass(classList, newClass) {
 
   if (newClass == 'icon-offline') {
     document.body.classList.add('offline');
-    window.runner = new Runner('.interstitial-wrapper');
+    //window.runner = new Runner('.interstitial-wrapper');
   } else {
     document.body.classList.add('neterror');
   }
