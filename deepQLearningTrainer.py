@@ -64,7 +64,8 @@ class DeepQLearningTrainer(Trainer):
 
         transitions_since_last_training = 0
 
-        for episode in range(target_episodes):
+        current_episode = 0
+        while current_episode < target_episodes:
 
             action_to_take = self._action(self._game.state())
             transition = self._game.take_action(action_to_take)
@@ -79,11 +80,13 @@ class DeepQLearningTrainer(Trainer):
 
                 mini_batch = random.sample(self._replay_memory, self._batch_size)
                 loss = self._train(mini_batch)
+
                 transitions_since_last_training = 0
+                current_episode += 1
 
-                self._log(num_episodes=episode, epsilon=self._epsilon_function.epsilon, loss=loss)
+                self._log(num_episodes=current_episode, epsilon=self._epsilon_function.epsilon, loss=loss)
 
-            if self._episodes_between_previews is not None and episode % self._episodes_between_previews == 0:
+            if self._episodes_between_previews is not None and current_episode % self._episodes_between_previews == 0:
                 self.preview()
 
     def _train(self, transitions_batch: List[Transition]) -> float:
