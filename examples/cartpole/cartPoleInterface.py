@@ -24,12 +24,28 @@ class CartPoleGameInterface(GameInterface, MarkovDecisionProcess):
     def state_shape(self) -> tuple:
         return self._feature_vector_length,
 
-    @property
     def state(self):
         return self._state
 
-    def display(self, action_provider: ActionProvider, num_episodes: int = None):
+    def reset(self):
+        self._state = self._env.reset()
 
+    def take_action(self, action: int) -> Transition:
+
+        # Advance the game to the next frame based on the action.
+        # Reward is 1 for every frame the pole survived
+        next_state, reward, is_final, _ = self._env.step(action)
+
+        # We redefine the losing reward so it has more relevance in
+        # the transitions and training is faster.
+        if is_final:
+            reward = -500
+
+        transition = Transition(self.state, action, reward, next_state, is_final)
+        self._state = transition.new_state
+        return transition
+
+    def display(self, action_provider: ActionProvider, num_episodes: int = None):
         n = 0
         finished_episodes = False
         self.reset()
@@ -55,19 +71,3 @@ class CartPoleGameInterface(GameInterface, MarkovDecisionProcess):
 
             if n == num_episodes:
                 finished_episodes = True
-
-    def reset(self):
-        self._state = self._env.reset()
-
-    def take_action(self, action: int) -> Transition:
-
-        # Advance the game to the next frame based on the action.
-        # Reward is 1 for every frame the pole survived
-        next_state, reward, is_final, _ = self._env.step(action)
-
-        if is_final:
-            reward = -500
-
-        transition = Transition(self.state, action, reward, next_state, is_final)
-        self._state = transition.new_state
-        return transition
