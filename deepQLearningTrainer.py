@@ -54,6 +54,8 @@ class DeepQLearningTrainer(Trainer):
 
         self._is_training = False
 
+        model.summary()
+
     def train(self, target_episodes: int):
         if self._is_training:
             raise RuntimeError("A training session is already in progress")
@@ -64,7 +66,7 @@ class DeepQLearningTrainer(Trainer):
 
         for episode in range(target_episodes):
 
-            action_to_take = self._action(self._game.state)
+            action_to_take = self._action(self._game.state())
             transition = self._game.take_action(action_to_take)
             self._replay_memory.append(transition)
             transitions_since_last_training += 1

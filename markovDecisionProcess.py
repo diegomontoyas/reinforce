@@ -17,7 +17,6 @@ class MarkovDecisionProcess:
     def state_shape(self) -> tuple:
         raise NotImplementedError
 
-    @property
     def state(self) -> np.ndarray:
         raise NotImplementedError
 
