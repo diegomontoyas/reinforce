@@ -104,7 +104,7 @@ var ARCADE_MODE_URL = 'chrome://dino/';
  * @enum {number}
  */
 Runner.config = {
-  ACCELERATION: 0,//0.001,
+  ACCELERATION: 0.001,
   BG_CLOUD_SPEED: 0.2,
   BOTTOM_PAD: 10,
   CLEAR_TIME: 3000,
@@ -114,7 +114,7 @@ Runner.config = {
   GRAVITY: 0.6,
   INITIAL_JUMP_VELOCITY: 12,
   INVERT_FADE_DURATION: 12000,
-  INVERT_DISTANCE: Number.MAX_SAFE_INTEGER,//700,
+  INVERT_DISTANCE: 700,
   MAX_BLINK_COUNT: 3,
   MAX_CLOUDS: 6,
   MAX_OBSTACLE_LENGTH: 3,
@@ -355,12 +355,8 @@ Runner.prototype = {
     this.horizon = new Horizon(this.canvas, this.spriteDef, this.dimensions,
         this.config.GAP_COEFFICIENT);
 
-    this.distanceMeterAdditionalLabel = document.getElementById("distance-additional-label")
-    this.gameStateLabel = document.getElementById("state-label")
-
     // Distance meter
-    this.distanceMeter = new DistanceMeter(this.canvas,
-      this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH, this.distanceMeterAdditionalLabel);
+    this.distanceMeter = new DistanceMeter(this.canvas, this.spriteDef.TEXT_SPRITE, this.dimensions.WIDTH);
 
     // Draw t-rex
     this.tRex = new Trex(this.canvas, this.spriteDef.TREX);
@@ -518,7 +514,6 @@ Runner.prototype = {
     this.time = now;
 
     if (this.playing) {
-      this.gameStateLabel.innerText = "playing";
       this.clearCanvas();
 
       if (this.tRex.jumping) {
@@ -763,7 +758,6 @@ Runner.prototype = {
   gameOver: function() {
     this.playSound(this.soundFx.HIT);
     vibrate(200);
-    this.gameStateLabel.innerText = "over";
 
     this.stop();
     this.crashed = true;
@@ -1884,14 +1878,13 @@ Trex.prototype = {
  * @param {number} canvasWidth
  * @constructor
  */
-function DistanceMeter(canvas, spritePos, canvasWidth, additionalLabel) {
+function DistanceMeter(canvas, spritePos, canvasWidth) {
   this.canvas = canvas;
   this.canvasCtx = canvas.getContext('2d');
   this.image = Runner.imageSprite;
   this.spritePos = spritePos;
   this.x = 0;
   this.y = 5;
-  this.additionalLabel = additionalLabel;
 
   this.currentDistance = 0;
   this.maxScore = 0;
@@ -2046,7 +2039,7 @@ DistanceMeter.prototype = {
     var playSound = false;
 
     distance = this.getActualDistance(distance);
-    this.additionalLabel.innerText = String(distance);
+    this.currentDistance = distance;
 
     if (!this.achievement) {
       

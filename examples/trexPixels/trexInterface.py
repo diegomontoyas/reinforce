@@ -25,8 +25,6 @@ import skimage.exposure
 class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
     CANVAS_ELEMENT_ID = "runner-canvas"
-    SCORE_ELEMENT_ID = "distance-additional-label"
-    PLAYING_STATE_ELEMENT_ID = "state-label"
 
     # The available actions. The index defines the action
     # and the value corresponds to the associated keyboard key
@@ -44,8 +42,6 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         self._driver.get("file:///" + os.path.abspath("./game/trex_container.html"))
 
         self._canvas = self._driver.find_element_by_id(TrexGameInterface.CANVAS_ELEMENT_ID)
-        self._score_label = self._driver.find_element_by_id(TrexGameInterface.SCORE_ELEMENT_ID)
-        self._playing_state_label = self._driver.find_element_by_id(TrexGameInterface.PLAYING_STATE_ELEMENT_ID)
 
         self._state_shape = self.state().shape
         self._action_space_length = len(TrexGameInterface.ACTION_KEYS)
@@ -85,10 +81,16 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         return image.astype(np.float).reshape(image.shape[0], image.shape[1], 1)
 
     def is_game_over(self) -> bool:
-        return self._playing_state_label.text == "over"
+        activated = self._evaluate_js("window.runner.activated")
+        crashed = self._evaluate_js("window.runner.crashed")
+
+        return crashed or not activated
 
     def current_score(self) -> int:
-        return int(self._score_label.text)
+        return self._evaluate_js("window.runner.distanceMeter.currentDistance")
+
+    def _evaluate_js(self, expression: str):
+        return self._driver.execute_script("return {};".format(expression))
 
     def _send_key(self, key: Keys):
         if key is not None:

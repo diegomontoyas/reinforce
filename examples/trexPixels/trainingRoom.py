@@ -4,7 +4,7 @@ from keras.optimizers import Adam
 
 from deepQLearningTrainer import DeepQLearningTrainer
 from epsilonChangeFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
-from examples.trex.trexInterface import TrexGameInterface
+from examples.trexPixels.trexInterface import TrexGameInterface
 from trainer import Trainer
 
 
