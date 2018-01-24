@@ -6,7 +6,7 @@ from keras.layers import Dense
 from keras.optimizers import Adam, SGD
 
 from dispatch import Dispatch
-from epsilonFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction, SinusoidalEpsilonChangeFunction, \
+from epsilonChangeFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction, SinusoidalEpsilonChangeFunction, \
     ConstantEpsilonFunction
 from examples.cartpole.cartPoleInterface import CartPoleGameInterface
 from deepQLearningTrainer import DeepQLearningTrainer
@@ -19,7 +19,7 @@ class TrainingRoom:
         self.game = CartPoleGameInterface()
         model = self.build_model()
 
-        epsilon_function = ConstantEpsilonFunction(initial_value=0)
+        epsilon_function = ConstantEpsilonFunction(initial_value=0.05)
 
         self.trainer = DeepQLearningTrainer(
             model=model,
