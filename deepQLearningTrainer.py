@@ -3,6 +3,7 @@ from typing import List
 
 import keras
 import numpy as np
+import os
 import random
 from collections import deque
 
@@ -15,29 +16,47 @@ from tensorboardLogger import TensorboardLogger
 from trainer import Trainer
 from transition import Transition
 
+import h5py
+
 
 class DeepQLearningTrainer(Trainer):
+    ANALYTICS_DIR = "./analytics"
+    CHECKPOINTS_DIR = "./checkpoints"
+
     def __init__(self,
+                 checkpoint_file: str,
                  model: keras.Model,
                  game: MarkovDecisionProcess,
                  transitions_per_episode: int,
                  epsilon_function: EpsilonChangeFunction,
                  batch_size: int = 32,
                  discount: float = 0.95,
+                 min_transitions_until_training: int = None,
                  replay_memory_max_size=2000,
                  game_for_preview: GameInterface = None,
                  episodes_between_previews: int = None,
                  preview_num_episodes: int = 1,
                  log_analytics: bool = True,
-                 logging_dir: str = "./analytics"):
+                 logging_dir: str = ANALYTICS_DIR,
+                 checkpoints_dir: str = CHECKPOINTS_DIR,
+                 episodes_between_checkpoints: int = None,
+                 ):
 
         super().__init__()
 
+        self._session_id = time.strftime("%a %b %d, %Y, %I:%M:%S %p")
+
         if log_analytics:
-            path = logging_dir + "/{}".format(time.strftime("%a %b %d, %Y, %I:%M:%S %p"))
+            path = logging_dir + "/{}".format(self._session_id)
             self._logger = TensorboardLogger(log_dir=path)
 
-        self._model = model
+        if checkpoint_file is not None:
+            self._model = keras.models.load_model(checkpoint_file)
+        elif model is not None:
+            self._model = model
+        else:
+            raise RuntimeError("Either a model or a checkpoint file has to be provided")
+
         self._game = game
         self._batch_size = batch_size
         self._replay_memory = deque(maxlen=replay_memory_max_size)
@@ -49,21 +68,37 @@ class DeepQLearningTrainer(Trainer):
         self._episodes_between_previews = episodes_between_previews
         self._preview_num_episodes = preview_num_episodes
 
+        self._episodes_between_checkpoints = episodes_between_checkpoints
+        self._checkpoints_dir = checkpoints_dir
+
+        if min_transitions_until_training is None:
+            self._min_transitions_until_training = self._batch_size
+        else:
+            self._min_transitions_until_training = min_transitions_until_training
+
         self._is_training = False
 
+        self._current_episode = 0
+        self._target_episodes = 0
+
         model.summary()
+
+    def _prepare_for_training(self):
+        self._current_episode = 0
+        self._game.reset()
+        self._is_training = True
 
     def train(self, target_episodes: int):
         if self._is_training:
             raise RuntimeError("A training session is already in progress")
 
-        self._game.reset()
+        self._prepare_for_training()
+        self._target_episodes = target_episodes
 
         current_transition = 0
         transitions_since_last_training = 0
 
-        current_episode = 0
-        while current_episode < target_episodes:
+        while self._current_episode < target_episodes:
 
             action_to_take = self._action(self._game.state())
             transition = self._game.take_action(action_to_take)
@@ -73,7 +108,7 @@ class DeepQLearningTrainer(Trainer):
 
             if self._logger is not None:
                 self._logger.log_transition_data(transition=current_transition,
-                                                 training_episode=current_episode,
+                                                 training_episode=self._current_episode,
                                                  reward=transition.reward)
 
             current_transition += 1
@@ -82,27 +117,27 @@ class DeepQLearningTrainer(Trainer):
                 self._game.reset()
 
             if transitions_since_last_training >= self._transitions_per_episode \
-                    and len(self._replay_memory) > self._batch_size:
+                    and len(self._replay_memory) >= self._min_transitions_until_training:
 
                 mini_batch = random.sample(self._replay_memory, self._batch_size)
                 loss = self._train(mini_batch)
 
                 if self._logger is not None:
-                    self._logger.log_training_episode_data(episode=current_episode,
+                    self._logger.log_training_episode_data(episode=self._current_episode,
                                                            loss=loss,
                                                            epsilon=self._epsilon_function.epsilon)
 
-                self._print(num_episodes=current_episode,
+                self._print(num_episodes=self._current_episode,
                             epsilon=self._epsilon_function.epsilon,
                             loss=loss)
 
-                if self._episodes_between_previews is not None \
-                        and current_episode % self._episodes_between_previews == 0:
-
-                    self.preview(episode=current_episode)
+                self._preview_if_needed()
+                self._save_model_if_needed()
 
                 transitions_since_last_training = 0
-                current_episode += 1
+                self._current_episode += 1
+
+        self._finish_training()
 
     def _train(self, transitions_batch: List[Transition]) -> float:
         """
@@ -136,12 +171,29 @@ class DeepQLearningTrainer(Trainer):
         loss = self._model.train_on_batch(x=np.array(batch_previous_states), y=np.array(batch_updated_Q_values))
         return loss
 
+    def _finish_training(self):
+        self._is_training = False
+
     def _action(self, state) -> int:
         return e_greedy_action(state, self._model, self._epsilon_function.epsilon, self._game.action_space_length)
 
-    def preview(self, episode: int):
+    def _preview_if_needed(self):
+        if self._episodes_between_previews is None or self._current_episode % self._episodes_between_previews != 0:
+            return
+
         action_provider = Epsilon0ActionProvider(self._model, self._game.action_space_length)
         scores = self._game_for_preview.display(action_provider, num_episodes=self._preview_num_episodes)
 
         if scores is not None and self._logger is not None:
-            self._logger.log_epsilon_0_game_summary(training_episode=episode, final_score=np.array(scores).mean())
+            self._logger.log_epsilon_0_game_summary(training_episode=self._current_episode,
+                                                    final_score=np.array(scores).mean())
+
+    def _save_model_if_needed(self):
+        if self._episodes_between_checkpoints is None \
+                or self._current_episode % self._episodes_between_checkpoints != 0:
+            return
+
+        if not os.path.exists(self._checkpoints_dir):
+            os.makedirs(self._checkpoints_dir)
+
+        self._model.save(filepath=self._checkpoints_dir + "/" + self._session_id + ".kerasmodel", overwrite=True)
