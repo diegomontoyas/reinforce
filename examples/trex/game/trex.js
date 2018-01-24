@@ -104,7 +104,7 @@ var ARCADE_MODE_URL = 'chrome://dino/';
  * @enum {number}
  */
 Runner.config = {
-  ACCELERATION: 0.001,
+  ACCELERATION: 0,//0.001,
   BG_CLOUD_SPEED: 0.2,
   BOTTOM_PAD: 10,
   CLEAR_TIME: 3000,
@@ -114,7 +114,7 @@ Runner.config = {
   GRAVITY: 0.6,
   INITIAL_JUMP_VELOCITY: 12,
   INVERT_FADE_DURATION: 12000,
-  INVERT_DISTANCE: 700,
+  INVERT_DISTANCE: Number.MAX_SAFE_INTEGER,//700,
   MAX_BLINK_COUNT: 3,
   MAX_CLOUDS: 6,
   MAX_OBSTACLE_LENGTH: 3,
@@ -867,6 +867,8 @@ Runner.prototype = {
    * Pause the game if the tab is not in focus.
    */
   onVisibilityChange: function(e) {
+    return;
+
     if (document.hidden || document.webkitHidden || e.type == 'blur' ||
       document.visibilityState != 'visible') {
       this.stop();

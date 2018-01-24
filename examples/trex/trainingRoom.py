@@ -3,7 +3,7 @@ from keras.layers import Dense, Convolution2D, Activation, Flatten, MaxPooling2D
 from keras.optimizers import Adam
 
 from deepQLearningTrainer import DeepQLearningTrainer
-from epsilonFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
+from epsilonChangeFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
 from examples.trex.trexInterface import TrexGameInterface
 from trainer import Trainer
 

@@ -30,13 +30,15 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
     # The available actions. The index defines the action
     # and the value corresponds to the associated keyboard key
-    ACTION_KEYS = [None, Keys.SPACE, Keys.ARROW_DOWN]
+    ACTION_KEYS = [None, Keys.SPACE]
 
     # The duration of a single transition, in seconds
-    TRANSITION_DURATION = 0.1
+    TRANSITION_DURATION = 0.6
 
     def __init__(self):
         super().__init__()
+
+        self._last_frame = None
 
         self._driver = webdriver.Firefox(executable_path=os.path.abspath("../../venv/geckodriver"))
         self._driver.get("file:///" + os.path.abspath("./game/trex_container.html"))
@@ -61,6 +63,10 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         return self._state_shape
 
     def state(self):
+        # current_frame = self.current_state_frame()
+        # last_frame = self._last_frame if self._last_frame is not None else current_frame
+        #
+        # mixed_frame = (current_frame + last_frame/2)/2
         return self.current_state_frame()
 
     def current_state_frame(self) -> np.ndarray:
@@ -71,12 +77,12 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
             pil_image = Image.open(io.BytesIO(imgdata))
             return np.array(pil_image)
 
-        image = string_to_rgb(image)  # RGB
-        image = skimage.color.rgb2gray(image)  # Grayscale
-        image = image # skimage.transform.resize(grayscale, (300, 426))  # Resized
-        image = skimage.exposure.rescale_intensity(image, out_range=(0, 255))
+        image = string_to_rgb(image)  # Covert base 64 to RGB
+        image = skimage.color.rgb2gray(image)  # Convert to grayscale
+        image = skimage.transform.resize(image, output_shape=(100, 200))  # Downscale by a factor of 6
+        image = image[:, :100]
 
-        return image.reshape(image.shape[0], image.shape[1], 1)
+        return image.astype(np.float).reshape(image.shape[0], image.shape[1], 1)
 
     def is_game_over(self) -> bool:
         return self._playing_state_label.text == "over"
@@ -98,18 +104,27 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         self._driver.execute_script("window.runner.play()")
 
     def take_action(self, action: int) -> Transition:
-        self._resume_game()
 
         if self.is_game_over():
             self._restart_game()
 
+        self._pause_game()
+
+        previous_state = self.state()
+        self._last_frame = self.current_state_frame()
         score_before = self.current_score()
+
+        self._resume_game()
+
         self._send_key(TrexGameInterface.ACTION_KEYS[action])
         print("Choosing: {}".format(action))
         time.sleep(TrexGameInterface.TRANSITION_DURATION)
 
         is_final = self.is_game_over()
         reward = self.current_score() - score_before
+
+        self._pause_game()
+
         next_state = self.state()
 
         if is_final:
@@ -117,15 +132,13 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
         print("Reward: {}. Lost: {}".format(reward, is_final))
 
-        transition = Transition(self.state(), action, reward, next_state, is_final)
-        self._pause_game()
-
+        transition = Transition(previous_state, action, reward, next_state, is_final)
         return transition
 
     def reset(self):
         pass
 
-    def display(self, action_provider: ActionProvider, num_episodes: int = None):
+    def display(self, action_provider: ActionProvider, num_episodes: int):
 
         n = 0
         finished_episodes = False
@@ -135,7 +148,13 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
             while not self.is_game_over():
 
+                if self.is_game_over():
+                    self._restart_game()
+
+                self._pause_game()
                 action = action_provider.action(self.state())
+                self._resume_game()
+
                 transition = self.take_action(action)
 
                 if transition.game_ended:
