@@ -9,15 +9,19 @@ import random
 
 from source.epsilonChangeFunctions.epsilonChangeFunction import EpsilonChangeFunction
 from source.gameInterface import GameInterface
-from source.markovDecisionProcess.actionProvider import Epsilon0ActionProvider
 from source.markovDecisionProcess.markovDecisionProcess import MarkovDecisionProcess
 from source.markovDecisionProcess.transition import Transition
 from source.trainers.trainer import Trainer
 from source.utils.epsilonGreedyFunction import e_greedy_action
+from source.utils.learningPreviewHelper import LearningPreviewHelper
 from source.utils.tensorboardLogger import TensorboardLogger
 
 
 class DeepQLearningTrainer(Trainer):
+    """
+    A trainer which uses Deep Q-Learning as algorithm.
+    """
+
     ANALYTICS_DIR = "./analytics"
     CHECKPOINTS_DIR = "./checkpoints"
 
@@ -25,7 +29,6 @@ class DeepQLearningTrainer(Trainer):
                  model: keras.Model,
                  game: MarkovDecisionProcess,
                  epsilon_function: EpsilonChangeFunction,
-                 checkpoint_file: str = None,
                  transitions_per_episode: int = 1,
                  batch_size: int = 32,
                  discount: float = 0.95,
@@ -36,9 +39,30 @@ class DeepQLearningTrainer(Trainer):
                  preview_num_episodes: int = 1,
                  log_analytics: bool = True,
                  logging_dir: str = ANALYTICS_DIR,
-                 checkpoints_dir: str = CHECKPOINTS_DIR,
                  episodes_between_checkpoints: int = None,
+                 checkpoints_dir: str = CHECKPOINTS_DIR,
                  ):
+
+        """
+        :param model: Keras model to use as the Q-Function approximator
+        :param game: A `MarkovDecisionProcess` to train with
+        :param epsilon_function: Epsilon function that will control how epsilon varies during training
+        :param transitions_per_episode: A training episode will be done every `transitions_per_episode` transitions
+        :param batch_size: Number of transitions used in each training episode
+        :param discount: The Q-Learning discount factor
+        :param min_transitions_until_training: Minimum number of transitions that have to be sampled before beginning
+            training. In other words, the minimum size of the replay memory before training.
+        :param replay_memory_max_size: The maximum size of the replay memory.
+        :param game_for_preview: A `GameInterface` to preview games with. If provided the trainer will be able to
+             play a game using epsilon=0 and calculate the final score every certain number of episodes.
+        :param episodes_between_previews: The number of training episodes between each epsilon 0 preview session.
+        :param preview_num_episodes: The number of games played in each epsilon 0 preview. An average of the scores
+            is logged in this case.
+        :param log_analytics: If true, training analytics will be logged using Tensorboard
+        :param logging_dir: The directory for analytics logging
+        :param episodes_between_checkpoints: The number of training episodes before saving a checkpoint of the model.
+        :param checkpoints_dir: The directory in which model checkpoints are saved.
+        """
 
         super().__init__()
 
@@ -48,13 +72,7 @@ class DeepQLearningTrainer(Trainer):
             path = logging_dir + "/{}".format(self._session_id)
             self._logger = TensorboardLogger(log_dir=path)
 
-        if checkpoint_file is not None:
-            self._model = keras.models.load_model(checkpoint_file)
-        elif model is not None:
-            self._model = model
-        else:
-            raise RuntimeError("Either a model or a checkpoint file has to be provided")
-
+        self._model = model
         self._game = game
         self._batch_size = batch_size
         self._replay_memory = deque(maxlen=replay_memory_max_size)
@@ -75,9 +93,10 @@ class DeepQLearningTrainer(Trainer):
             self._min_transitions_until_training = min_transitions_until_training
 
         self._is_training = False
-
         self._current_episode = 0
         self._target_episodes = 0
+
+        self._preview_helper = LearningPreviewHelper(self._game_for_preview, self._model)
 
         model.summary()
 
@@ -173,17 +192,13 @@ class DeepQLearningTrainer(Trainer):
         self._is_training = False
 
     def _action(self, state) -> int:
-        return e_greedy_action(state, self._model, self._epsilon_function.epsilon, self._game.action_space_length)
+        return e_greedy_action(state, self._model, self._epsilon_function.epsilon, self._game.num_actions)
 
     def _preview_if_needed(self):
         if self._episodes_between_previews is None or self._current_episode % self._episodes_between_previews != 0:
             return
 
-        action_provider = Epsilon0ActionProvider(self._model, self._game.action_space_length)
-
-        scores = []
-        for episode in range(self._preview_num_episodes):
-            scores.append(self._game_for_preview.display_episode(action_provider))
+        scores = self._preview_helper.play(episodes=self._preview_num_episodes, display=True)
 
         if self._logger is not None:
             self._logger.log_epsilon_0_game_summary(training_episode=self._current_episode,

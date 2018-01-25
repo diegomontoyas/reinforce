@@ -34,7 +34,7 @@ class TrainingRoom:
         model = Sequential()
         model.add(Dense(24, input_dim=self.game.state_shape[0], activation='relu'))
         model.add(Dense(24, activation='relu'))
-        model.add(Dense(self.game.action_space_length, activation='linear'))
+        model.add(Dense(self.game.num_actions, activation='linear'))
         model.compile(loss='mse', optimizer=Adam(lr=0.001))
         return model
 

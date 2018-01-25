@@ -10,7 +10,7 @@ class MarkovDecisionProcess:
         self._should_run = False
 
     @property
-    def action_space_length(self) -> int:
+    def num_actions(self) -> int:
         raise NotImplementedError
 
     @property

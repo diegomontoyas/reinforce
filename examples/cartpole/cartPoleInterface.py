@@ -16,7 +16,7 @@ class CartPoleGameInterface(GameInterface, MarkovDecisionProcess):
         self._state = None
 
     @property
-    def action_space_length(self) -> int:
+    def num_actions(self) -> int:
         return self._action_space_length
 
     @property
@@ -44,7 +44,7 @@ class CartPoleGameInterface(GameInterface, MarkovDecisionProcess):
         self._state = transition.new_state
         return transition
 
-    def display_episode(self, action_provider: ActionProvider) -> float:
+    def play_episode(self, action_provider: ActionProvider, display: bool=True) -> float:
 
         self.reset()
 

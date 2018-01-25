@@ -36,7 +36,7 @@ class TrainingRoom():
         shape = self.game.state_shape
 
         model.add(Dense(512, input_dim=shape[0], activation='relu'))
-        model.add(Dense(self.game.action_space_length, activation='linear'))
+        model.add(Dense(self.game.num_actions, activation='linear'))
 
         model.compile(loss='mse', optimizer=Adam(lr=0.0001))
         model.summary()

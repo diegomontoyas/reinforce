@@ -24,7 +24,7 @@ class CartPolePixelsGameInterface(GameInterface, MarkovDecisionProcess):
         self._action_space_length = self._env.action_space.n
 
     @property
-    def action_space_length(self) -> int:
+    def num_actions(self) -> int:
         return self._action_space_length
 
     @property
@@ -62,7 +62,7 @@ class CartPolePixelsGameInterface(GameInterface, MarkovDecisionProcess):
         transition = Transition(previous_state, action, reward, next_state, is_final)
         return transition
 
-    def display_episode(self, action_provider: ActionProvider) -> float:
+    def play_episode(self, action_provider: ActionProvider, display: bool=True) -> float:
 
         self.reset()
 
