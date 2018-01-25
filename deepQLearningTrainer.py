@@ -24,11 +24,11 @@ class DeepQLearningTrainer(Trainer):
     CHECKPOINTS_DIR = "./checkpoints"
 
     def __init__(self,
-                 checkpoint_file: str,
                  model: keras.Model,
                  game: MarkovDecisionProcess,
-                 transitions_per_episode: int,
                  epsilon_function: EpsilonChangeFunction,
+                 checkpoint_file: str = None,
+                 transitions_per_episode: int = 1,
                  batch_size: int = 32,
                  discount: float = 0.95,
                  min_transitions_until_training: int = None,
@@ -182,9 +182,12 @@ class DeepQLearningTrainer(Trainer):
             return
 
         action_provider = Epsilon0ActionProvider(self._model, self._game.action_space_length)
-        scores = self._game_for_preview.display(action_provider, num_episodes=self._preview_num_episodes)
 
-        if scores is not None and self._logger is not None:
+        scores = []
+        for episode in range(self._preview_num_episodes):
+            scores.append(self._game_for_preview.display_episode(action_provider))
+
+        if self._logger is not None:
             self._logger.log_epsilon_0_game_summary(training_episode=self._current_episode,
                                                     final_score=np.array(scores).mean())
 

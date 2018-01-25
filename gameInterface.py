@@ -3,5 +3,5 @@ from actionProvider import ActionProvider
 
 class GameInterface:
 
-    def display(self, action_provider: ActionProvider, num_episodes: int) -> [float]:
+    def display_episode(self, action_provider: ActionProvider) -> [float]:
         raise NotImplementedError

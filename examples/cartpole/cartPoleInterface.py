@@ -45,29 +45,22 @@ class CartPoleGameInterface(GameInterface, MarkovDecisionProcess):
         self._state = transition.new_state
         return transition
 
-    def display(self, action_provider: ActionProvider, num_episodes: int):
-        n = 0
-        finished_episodes = False
+    def display_episode(self, action_provider: ActionProvider) -> float:
+
         self.reset()
 
-        while not finished_episodes:
+        t = 0
+        episode_ended = False
+        while not episode_ended:
+            self._env.render()
 
-            t = 0
-            episode_ended = False
-            while not episode_ended:
-                self._env.render()
+            # Decide action
+            action = action_provider.action(self.state())
+            transition = self.take_action(action)
+            t += 1
 
-                # Decide action
-                action = action_provider.action(self.state())
-                transition = self.take_action(action)
+            episode_ended = transition.game_ended
 
-                if transition.game_ended:
-                    print("Game finished with score: {}".format(t + transition.reward))
-                    episode_ended = True
-
-                t += 1
-
-            n += 1
-
-            if n == num_episodes:
-                finished_episodes = True
+        score = t + transition.reward
+        print("Game finished with score: {}".format(score))
+        return score

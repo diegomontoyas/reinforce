@@ -67,34 +67,22 @@ class CartPolePixelsGameInterface(GameInterface, MarkovDecisionProcess):
         transition = Transition(previous_state, action, reward, next_state, is_final)
         return transition
 
-    def display(self, action_provider: ActionProvider, num_episodes: int) -> [float]:
-        n = 0
-        finished_episodes = False
+    def display_episode(self, action_provider: ActionProvider) -> float:
+
         self.reset()
-        scores = []
 
-        while not finished_episodes:
+        t = 0
+        episode_ended = False
+        while not episode_ended:
+            self._env.render()
 
-            t = 0
-            episode_ended = False
-            while not episode_ended:
-                self._env.render()
+            # Decide action
+            action = action_provider.action(self.state())
+            transition = self.take_action(action)
+            t += 1
 
-                # Decide action
-                action = action_provider.action(self.state())
-                transition = self.take_action(action)
+            episode_ended = transition.game_ended
 
-                if transition.game_ended:
-                    score = t + transition.reward
-                    episode_ended = True
-                    scores.append(score)
-                    print("Game finished with score: {}".format(score))
-
-                t += 1
-
-            n += 1
-
-            if n == num_episodes:
-                finished_episodes = True
-
-        return scores
+        score = t + transition.reward
+        print("Game finished with score: {}".format(score))
+        return score
