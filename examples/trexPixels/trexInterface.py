@@ -1,3 +1,5 @@
+import signal
+
 import base64
 import io
 import threading
@@ -21,6 +23,8 @@ import skimage.color
 import skimage.transform
 import skimage.exposure
 
+import psutil
+
 
 class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
@@ -31,15 +35,20 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
     ACTION_KEYS = [None, Keys.SPACE]
 
     # The duration of a single transition, in seconds
-    TRANSITION_DURATION = 0.6
+    TRANSITION_DURATION = 0
+
+    LOOSING_REWARD = -500
 
     def __init__(self):
         super().__init__()
 
-        self._last_frame = None
+        self._last_transition = None
+
+        self._is_browser_suspended = False
 
         self._driver = webdriver.Firefox(executable_path=os.path.abspath("../../venv/geckodriver"))
         self._driver.get("file:///" + os.path.abspath("./game/trex_container.html"))
+        self._browser_process = psutil.Process(self._driver.service.process.pid).children()[0]
 
         self._canvas = self._driver.find_element_by_id(TrexGameInterface.CANVAS_ELEMENT_ID)
 
@@ -63,10 +72,17 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         # last_frame = self._last_frame if self._last_frame is not None else current_frame
         #
         # mixed_frame = (current_frame + last_frame/2)/2
-        return self.current_state_frame()
+        return self._current_state_frame()
 
-    def current_state_frame(self) -> np.ndarray:
+    def _current_state_frame(self) -> np.ndarray:
+
+        was_browser_suspended = self._is_browser_suspended
+
+        self._resume_browser()
         image = self._canvas.screenshot_as_base64
+
+        if was_browser_suspended:
+            self._suspend_browser()
 
         def string_to_rgb(base64_string) -> np.ndarray:
             imgdata = base64.b64decode(base64_string)
@@ -75,18 +91,20 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
         image = string_to_rgb(image)  # Covert base 64 to RGB
         image = skimage.color.rgb2gray(image)  # Convert to grayscale
-        image = skimage.transform.resize(image, output_shape=(100, 200))  # Downscale by a factor of 6
-        image = image[:, :100]
+        image = skimage.transform.resize(image, output_shape=(30, 50))  # Downscale by a factor of 6
 
-        return image.astype(np.float).reshape(image.shape[0], image.shape[1], 1)
+        slice_end = int(image.shape[1]*0.6)
+        image = image[:, :slice_end]
 
-    def is_game_over(self) -> bool:
+        return image.astype(np.float).flatten()  #.reshape(image.shape[0], image.shape[1], 1)
+
+    def _is_game_over(self) -> bool:
         activated = self._evaluate_js("window.runner.activated")
         crashed = self._evaluate_js("window.runner.crashed")
 
         return crashed or not activated
 
-    def current_score(self) -> int:
+    def _current_score(self) -> int:
         return self._evaluate_js("window.runner.distanceMeter.currentDistance")
 
     def _evaluate_js(self, expression: str):
@@ -99,70 +117,72 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
     def _restart_game(self):
         self._driver.execute_script("window.runner.restart()")
 
-    def _pause_game(self):
-        self._driver.execute_script("window.runner.stop()")
+    def _suspend_browser(self):
+        # self._driver.execute_script("window.runner.stop()")
+        self._browser_process.send_signal(signal.SIGSTOP)
+        self._is_browser_suspended = True
 
-    def _resume_game(self):
-        self._driver.execute_script("window.runner.play()")
+    def _resume_browser(self):
+        # self._driver.execute_script("window.runner.play()")
+        self._browser_process.send_signal(signal.SIGCONT)
+        self._is_browser_suspended = False
 
     def take_action(self, action: int) -> Transition:
 
-        if self.is_game_over():
+        self._resume_browser()
+
+        if self._is_game_over():
+
+            if self._last_transition is not None and not self._last_transition.game_ended:
+                self._last_transition.game_ended = True
+                self._last_transition.new_state = self.state()
+                self._last_transition.reward = TrexGameInterface.LOOSING_REWARD
+
+                self._suspend_browser()
+                # print("Reward: {}. Lost: {}".format(self._last_transition.reward, True))
+                return self._last_transition
+
             self._restart_game()
 
-        self._pause_game()
-
         previous_state = self.state()
-        self._last_frame = self.current_state_frame()
-        score_before = self.current_score()
-
-        self._resume_game()
+        score_before = self._current_score()
 
         self._send_key(TrexGameInterface.ACTION_KEYS[action])
-        print("Choosing: {}".format(action))
+        # print("Choosing: {}".format(action))
         time.sleep(TrexGameInterface.TRANSITION_DURATION)
 
-        is_final = self.is_game_over()
-        reward = self.current_score() - score_before
-
-        self._pause_game()
+        is_final = self._is_game_over()
+        reward = self._current_score() - score_before
 
         next_state = self.state()
 
-        if is_final:
-            reward = -500
+        self._suspend_browser()
 
-        print("Reward: {}. Lost: {}".format(reward, is_final))
+        if is_final:
+            reward = TrexGameInterface.LOOSING_REWARD
+
+        # print("Reward: {}. Lost: {}".format(reward, is_final))
 
         transition = Transition(previous_state, action, reward, next_state, is_final)
+        self._last_transition = transition
         return transition
 
     def reset(self):
         pass
 
-    def display(self, action_provider: ActionProvider, num_episodes: int):
+    def display_episode(self, action_provider: ActionProvider) -> float:
 
-        n = 0
-        finished_episodes = False
         self.reset()
 
-        while not finished_episodes:
+        self._resume_browser()
+        self._send_key(Keys.SPACE)
+        time.sleep(1)
 
-            while not self.is_game_over():
+        while not self._is_game_over():
+            action = action_provider.action(self.state())
+            self.take_action(action)
+            self._resume_browser()
 
-                if self.is_game_over():
-                    self._restart_game()
-
-                self._pause_game()
-                action = action_provider.action(self.state())
-                self._resume_game()
-
-                transition = self.take_action(action)
-
-                if transition.game_ended:
-                    print("Game finished with score: {}".format(self.current_score()))
-
-            n += 1
-
-            if n == num_episodes:
-                finished_episodes = True
+        score = self._current_score()
+        print("Game finished with score: {}".format(score))
+        return score

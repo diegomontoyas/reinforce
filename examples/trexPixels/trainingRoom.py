@@ -18,7 +18,7 @@ class TrainingRoom:
         epsilon_function = ConstMultiplierEpsilonDecayFunction(
             initial_value=1,
             final_value=0.01,
-            decay_multiplier=0.995
+            decay_multiplier=0.9999
         )
 
         self.trainer = DeepQLearningTrainer(
@@ -30,32 +30,25 @@ class TrainingRoom:
             discount=0.95,
             replay_memory_max_size=2000,
             game_for_preview=TrexGameInterface(),
-            episodes_between_previews=15,
-            preview_num_episodes=1
+            episodes_between_previews=100,
+            preview_num_episodes=1,
+            episodes_between_checkpoints=50
         )
 
     def build_model(self, num_actions):
         model = Sequential()
+        shape = self.game.state_shape
 
-        model.add(Convolution2D(filters=16, kernel_size=8, strides=8,
-                                input_shape=self.game.state_shape))
+        model.add(Dense(256, input_dim=shape[0], activation='relu'))
+        model.add(Dense(64, activation='relu'))
+        model.add(Dense(self.game.action_space_length, activation='linear'))
 
-        model.add(Activation('relu'))
-        model.add(MaxPooling2D(pool_size=(5, 5), strides=5))
-
-        model.add(Convolution2D(filters=16, kernel_size=2, strides=2))
-        model.add(Activation('relu'))
-
-        model.add(Flatten())
-        model.add(Dense(512))
-        model.add(Activation('relu'))
         model.add(Dense(num_actions))
-
-        model.compile(loss='mse', optimizer=Adam(lr=1e-6))
+        model.compile(loss='mse', optimizer=Adam(lr=0.0001))
         return model
 
     def start_training(self):
-        self.trainer.train(target_episodes=600000)
+        self.trainer.train(target_episodes=1000000)
 
 
 if __name__ == "__main__":
