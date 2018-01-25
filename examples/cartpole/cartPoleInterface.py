@@ -1,8 +1,8 @@
 import gym
-from markovDecisionProcess import MarkovDecisionProcess
-from transition import Transition
 
 from source.gameInterface import *
+from source.markovDecisionProcess.markovDecisionProcess import MarkovDecisionProcess
+from source.markovDecisionProcess.transition import Transition
 
 
 class CartPoleGameInterface(GameInterface, MarkovDecisionProcess):

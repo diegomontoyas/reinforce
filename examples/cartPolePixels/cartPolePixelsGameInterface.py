@@ -3,11 +3,11 @@ import numpy as np
 import skimage.color
 import skimage.exposure
 import skimage.transform
-from actionProvider import ActionProvider
-from markovDecisionProcess import MarkovDecisionProcess
-from transition import Transition
 
 from source.gameInterface import GameInterface
+from source.markovDecisionProcess.actionProvider import ActionProvider
+from source.markovDecisionProcess.markovDecisionProcess import MarkovDecisionProcess
+from source.markovDecisionProcess.transition import Transition
 
 
 class CartPolePixelsGameInterface(GameInterface, MarkovDecisionProcess):

@@ -1,20 +1,20 @@
 import time
+from collections import deque
 from typing import List
 
 import keras
 import numpy as np
 import os
 import random
-from actionProvider import Epsilon0ActionProvider
-from collections import deque
-from epsilonGreedyFunction import e_greedy_action
-from markovDecisionProcess import MarkovDecisionProcess
-from tensorboardLogger import TensorboardLogger
-from trainer import Trainer
-from transition import Transition
 
 from source.epsilonChangeFunctions.epsilonChangeFunction import EpsilonChangeFunction
 from source.gameInterface import GameInterface
+from source.markovDecisionProcess.actionProvider import Epsilon0ActionProvider
+from source.markovDecisionProcess.markovDecisionProcess import MarkovDecisionProcess
+from source.markovDecisionProcess.transition import Transition
+from source.trainers.trainer import Trainer
+from source.utils.epsilonGreedyFunction import e_greedy_action
+from source.utils.tensorboardLogger import TensorboardLogger
 
 
 class DeepQLearningTrainer(Trainer):

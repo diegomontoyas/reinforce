@@ -1,4 +1,3 @@
-from dispatch import Dispatch
 from keras import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
@@ -30,8 +29,6 @@ class TrainingRoom:
             preview_num_episodes=1
         )
 
-        self.trainer.delegate = self
-
     def build_model(self):
 
         model = Sequential()
@@ -47,7 +44,4 @@ class TrainingRoom:
 
 if __name__ == "__main__":
 
-    def main():
-        TrainingRoom().start_training()
-
-    Dispatch.main(main)
+    TrainingRoom().start_training()

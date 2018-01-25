@@ -10,13 +10,13 @@ import skimage.color
 import skimage.exposure
 import skimage.transform
 from PIL import Image
-from actionProvider import ActionProvider
-from markovDecisionProcess import MarkovDecisionProcess
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from transition import Transition
 
 from source.gameInterface import GameInterface
+from source.markovDecisionProcess.actionProvider import ActionProvider
+from source.markovDecisionProcess.markovDecisionProcess import MarkovDecisionProcess
+from source.markovDecisionProcess.transition import Transition
 
 
 class TrexGameInterface(GameInterface, MarkovDecisionProcess):
