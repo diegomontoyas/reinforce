@@ -1,7 +1,7 @@
 import keras
 import numpy as np
 
-from epsilonGreedyFunction import e_greedy_action
+from source.utils.epsilonGreedyFunction import e_greedy_action
 
 
 class ActionProvider:

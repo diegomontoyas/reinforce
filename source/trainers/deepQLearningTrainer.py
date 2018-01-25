@@ -5,18 +5,16 @@ import keras
 import numpy as np
 import os
 import random
+from actionProvider import Epsilon0ActionProvider
 from collections import deque
-
-from actionProvider import ActionProvider, Epsilon0ActionProvider
-from epsilonChangeFunctions.epsilonChangeFunction import EpsilonChangeFunction
 from epsilonGreedyFunction import e_greedy_action
-from gameInterface import GameInterface
 from markovDecisionProcess import MarkovDecisionProcess
 from tensorboardLogger import TensorboardLogger
 from trainer import Trainer
 from transition import Transition
 
-import h5py
+from source.epsilonChangeFunctions.epsilonChangeFunction import EpsilonChangeFunction
+from source.gameInterface import GameInterface
 
 
 class DeepQLearningTrainer(Trainer):

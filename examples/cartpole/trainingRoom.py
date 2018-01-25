@@ -1,15 +1,11 @@
-import asyncio
-from threading import Thread
-
+from dispatch import Dispatch
 from keras import Sequential
 from keras.layers import Dense
-from keras.optimizers import Adam, SGD
+from keras.optimizers import Adam
 
-from dispatch import Dispatch
-from epsilonChangeFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction, SinusoidalEpsilonChangeFunction, \
-    ConstantEpsilonFunction
 from examples.cartpole.cartPoleInterface import CartPoleGameInterface
-from deepQLearningTrainer import DeepQLearningTrainer
+from source.epsilonChangeFunctions.epsilonChangeFunctions import ConstantEpsilonFunction
+from source.trainers.deepQLearningTrainer import DeepQLearningTrainer
 
 
 class TrainingRoom:

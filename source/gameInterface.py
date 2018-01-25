@@ -1,4 +1,4 @@
-from actionProvider import ActionProvider
+from source.markovDecisionProcess.actionProvider import ActionProvider
 
 
 class GameInterface:

@@ -1,10 +1,10 @@
 from keras import Sequential
 from keras.layers import Dense
-from keras.optimizers import Adam, SGD
+from keras.optimizers import Adam
 
-from deepQLearningTrainer import DeepQLearningTrainer
-from epsilonChangeFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction, ConstantEpsilonFunction
 from examples.cartpolePixels.cartPolePixelsGameInterface import CartPolePixelsGameInterface
+from source.epsilonChangeFunctions.epsilonChangeFunctions import ConstantEpsilonFunction
+from source.trainers.deepQLearningTrainer import DeepQLearningTrainer
 
 
 class TrainingRoom():

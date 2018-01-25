@@ -1,6 +1,6 @@
 from math import sin
 
-from epsilonChangeFunctions.epsilonChangeFunction import EpsilonChangeFunction
+from source.epsilonChangeFunctions.epsilonChangeFunction import EpsilonChangeFunction
 
 
 class ConstantEpsilonFunction(EpsilonChangeFunction):

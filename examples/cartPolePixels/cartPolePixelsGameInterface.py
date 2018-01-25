@@ -1,18 +1,13 @@
-
-import threading
-
 import gym
 import numpy as np
-from PIL import Image
-
+import skimage.color
+import skimage.exposure
+import skimage.transform
 from actionProvider import ActionProvider
-from gameInterface import GameInterface
 from markovDecisionProcess import MarkovDecisionProcess
 from transition import Transition
 
-import skimage.color
-import skimage.transform
-import skimage.exposure
+from source.gameInterface import GameInterface
 
 
 class CartPolePixelsGameInterface(GameInterface, MarkovDecisionProcess):

@@ -1,29 +1,22 @@
 import signal
+import time
 
 import base64
 import io
-import threading
-
 import numpy as np
-import time
-
 import os
-
+import psutil
+import skimage.color
+import skimage.exposure
+import skimage.transform
 from PIL import Image
+from actionProvider import ActionProvider
+from markovDecisionProcess import MarkovDecisionProcess
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
-
-from actionProvider import ActionProvider
-from gameInterface import GameInterface
-from markovDecisionProcess import MarkovDecisionProcess
 from transition import Transition
 
-import skimage.color
-import skimage.transform
-import skimage.exposure
-
-import psutil
+from source.gameInterface import GameInterface
 
 
 class TrexGameInterface(GameInterface, MarkovDecisionProcess):

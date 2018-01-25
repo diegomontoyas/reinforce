@@ -1,11 +1,10 @@
 from keras import Sequential
-from keras.layers import Dense, Convolution2D, Activation, Flatten, MaxPooling2D
+from keras.layers import Dense
 from keras.optimizers import Adam
 
-from deepQLearningTrainer import DeepQLearningTrainer
-from epsilonChangeFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
 from examples.trexPixels.trexInterface import TrexGameInterface
-from trainer import Trainer
+from source.epsilonChangeFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
+from source.trainers.deepQLearningTrainer import DeepQLearningTrainer
 
 
 class TrainingRoom:

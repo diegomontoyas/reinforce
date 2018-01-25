@@ -1,6 +1,6 @@
 import numpy as np
 
-from transition import Transition
+from source.markovDecisionProcess.transition import Transition
 
 
 class MarkovDecisionProcess:
