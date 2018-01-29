@@ -82,7 +82,7 @@ var DEFAULT_WIDTH = 600;
  * Frames per second.
  * @const
  */
-var FPS = 60;
+var FPS = 30;
 
 /** @const */
 var IS_HIDPI = window.devicePixelRatio > 1;
@@ -123,7 +123,7 @@ Runner.config = {
   MIN_JUMP_HEIGHT: 35,
   MOBILE_SPEED_COEFFICIENT: 1.2,
   RESOURCE_TEMPLATE_ID: 'audio-resources',
-  SPEED: 6,
+  SPEED: 20,//6,
   SPEED_DROP_COEFFICIENT: 3,
   ARCADE_MODE_INITIAL_TOP_POSITION: 35,
   ARCADE_MODE_TOP_POSITION_PERCENT: 0.1
@@ -488,14 +488,14 @@ Runner.prototype = {
     this.playCount++;
 
     // Handle tabbing off the page. Pause the current game.
-    document.addEventListener(Runner.events.VISIBILITY,
-          this.onVisibilityChange.bind(this));
+    // document.addEventListener(Runner.events.VISIBILITY,
+    //       this.onVisibilityChange.bind(this));
 
-    window.addEventListener(Runner.events.BLUR,
-          this.onVisibilityChange.bind(this));
+    // window.addEventListener(Runner.events.BLUR,
+    //       this.onVisibilityChange.bind(this));
 
-    window.addEventListener(Runner.events.FOCUS,
-          this.onVisibilityChange.bind(this));
+    // window.addEventListener(Runner.events.FOCUS,
+    //       this.onVisibilityChange.bind(this));
   },
 
   clearCanvas: function() {
@@ -857,20 +857,20 @@ Runner.prototype = {
         translateY + 'px)';
   },
 
-  /**
-   * Pause the game if the tab is not in focus.
-   */
-  onVisibilityChange: function(e) {
-    return;
-
-    if (document.hidden || document.webkitHidden || e.type == 'blur' ||
-      document.visibilityState != 'visible') {
-      this.stop();
-    } else if (!this.crashed) {
-      this.tRex.reset();
-      this.play();
-    }
-  },
+  // /**
+  //  * Pause the game if the tab is not in focus.
+  //  */
+  // onVisibilityChange: function(e) {
+  //   return;
+  //
+  //   if (document.hidden || document.webkitHidden || e.type == 'blur' ||
+  //     document.visibilityState != 'visible') {
+  //     this.stop();
+  //   } else if (!this.crashed) {
+  //     this.tRex.reset();
+  //     this.play();
+  //   }
+  // },
 
   /**
    * Play a sound.
@@ -2042,7 +2042,7 @@ DistanceMeter.prototype = {
     this.currentDistance = distance;
 
     if (!this.achievement) {
-      
+
       // Score has gone beyond the initial digit count.
       if (distance > this.maxScore && this.maxScoreUnits ==
         this.config.MAX_DISTANCE_UNITS) {
