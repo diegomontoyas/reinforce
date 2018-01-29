@@ -15,3 +15,4 @@ class LearningPreviewHelper:
         scores = []
         for episode in range(episodes):
             scores.append(self._game.play_episode(self._action_provider))
+        return scores

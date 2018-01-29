@@ -71,6 +71,8 @@ class DeepQLearningTrainer(Trainer):
         if log_analytics:
             path = logging_dir + "/{}".format(self._session_id)
             self._logger = TensorboardLogger(log_dir=path)
+        else:
+            self._logger = None
 
         self._model = model
         self._game = game
