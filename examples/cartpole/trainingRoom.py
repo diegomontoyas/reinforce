@@ -4,6 +4,7 @@ from keras.optimizers import Adam
 
 from examples.cartpole.cartPoleInterface import CartPoleGameInterface
 from source.epsilonUpdater.constantEpsilonUpdater import ConstantEpsilonUpdater
+from source.replayMemory.simpleDequeReplayMemory import SimpleDequeReplayMemory
 from source.trainers.deepQLearningTrainer import DeepQLearningTrainer
 
 
@@ -20,10 +21,10 @@ class TrainingRoom:
             model=model,
             game=self.game,
             epsilon_function=epsilon_function,
+            replay_memory=SimpleDequeReplayMemory(max_size=2000),
             transitions_per_episode=2,
             batch_size=32,
             discount=0.95,
-            replay_memory_max_size=2000,
             game_for_preview=CartPoleGameInterface(),
             episodes_between_previews=250,
             preview_num_episodes=1

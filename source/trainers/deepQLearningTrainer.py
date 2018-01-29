@@ -11,11 +11,13 @@ from source.epsilonUpdater.epsilonUpdater import EpsilonUpdater
 from source.gameInterface import GameInterface
 from source.markovDecisionProcess.markovDecisionProcess import MarkovDecisionProcess
 from source.markovDecisionProcess.transition import Transition
+from source.replayMemory.replayMemory import ReplayMemory
 from source.trainers.trainer import Trainer
 from source.utils.epsilonGreedyFunction import e_greedy_action
 from source.utils.learningPreviewHelper import LearningPreviewHelper
 from source.utils.tensorboardLogger import TensorboardLogger
 
+import h5py
 
 class DeepQLearningTrainer(Trainer):
     """
@@ -29,11 +31,11 @@ class DeepQLearningTrainer(Trainer):
                  model: keras.Model,
                  game: MarkovDecisionProcess,
                  epsilon_function: EpsilonUpdater,
+                 replay_memory: ReplayMemory,
                  transitions_per_episode: int = 1,
                  batch_size: int = 32,
                  discount: float = 0.95,
                  min_transitions_until_training: int = None,
-                 replay_memory_max_size=2000,
                  game_for_preview: GameInterface = None,
                  episodes_between_previews: int = None,
                  preview_num_episodes: int = 1,
@@ -47,12 +49,12 @@ class DeepQLearningTrainer(Trainer):
         :param model: Keras model to use as the Q-Function approximator
         :param game: A `MarkovDecisionProcess` to train with
         :param epsilon_function: Epsilon function that will control how epsilon varies during training
+        :param replay_memory: The replay memory to use
         :param transitions_per_episode: A training episode will be done every `transitions_per_episode` transitions
         :param batch_size: Number of transitions used in each training episode
         :param discount: The Q-Learning discount factor
         :param min_transitions_until_training: Minimum number of transitions that have to be sampled before beginning
             training. In other words, the minimum size of the replay memory before training.
-        :param replay_memory_max_size: The maximum size of the replay memory.
         :param game_for_preview: A `GameInterface` to preview games with. If provided the trainer will be able to
              play a game using epsilon=0 and calculate the final score every certain number of episodes.
         :param episodes_between_previews: The number of training episodes between each epsilon 0 preview session.
@@ -77,7 +79,7 @@ class DeepQLearningTrainer(Trainer):
         self._model = model
         self._game = game
         self._batch_size = batch_size
-        self._replay_memory = deque(maxlen=replay_memory_max_size)
+        self._replay_memory = replay_memory
         self._discount = discount
         self._epsilon_function = epsilon_function
         self._transitions_per_episode = transitions_per_episode
@@ -121,7 +123,7 @@ class DeepQLearningTrainer(Trainer):
 
             action_to_take = self._action(self._game.state())
             transition = self._game.take_action(action_to_take)
-            self._replay_memory.append(transition)
+            self._replay_memory.remember(transition)
 
             transitions_since_last_training += 1
 
@@ -138,7 +140,7 @@ class DeepQLearningTrainer(Trainer):
             if transitions_since_last_training >= self._transitions_per_episode \
                     and len(self._replay_memory) >= self._min_transitions_until_training:
 
-                mini_batch = random.sample(self._replay_memory, self._batch_size)
+                mini_batch = self._replay_memory.sample(self._batch_size)
                 loss = self._train(mini_batch)
 
                 if self._logger is not None:

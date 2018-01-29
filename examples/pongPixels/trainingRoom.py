@@ -4,6 +4,7 @@ from keras.optimizers import Adam
 
 from examples.pongPixels.pongPixelsGameInterface import PongPixelsGameInterface
 from source.epsilonUpdater.constantMultiplierEpsilonUpdater import ConstMultiplierEpsilonUpdater
+from source.replayMemory.simpleDequeReplayMemory import SimpleDequeReplayMemory
 from source.trainers.deepQLearningTrainer import DeepQLearningTrainer
 
 
@@ -23,10 +24,10 @@ class TrainingRoom():
             model=model,
             game=self.game,
             epsilon_function=epsilon_function,
+            replay_memory=SimpleDequeReplayMemory(max_size=100000),
             transitions_per_episode=1,
             batch_size=32,
             discount=0.98,
-            replay_memory_max_size=100000,
             game_for_preview=PongPixelsGameInterface(),
             episodes_between_previews=1500,
             preview_num_episodes=1
