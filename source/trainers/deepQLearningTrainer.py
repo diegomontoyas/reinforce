@@ -7,7 +7,7 @@ import numpy as np
 import os
 import random
 
-from source.epsilonChangeFunctions.epsilonChangeFunction import EpsilonChangeFunction
+from source.epsilonUpdater.epsilonUpdater import EpsilonUpdater
 from source.gameInterface import GameInterface
 from source.markovDecisionProcess.markovDecisionProcess import MarkovDecisionProcess
 from source.markovDecisionProcess.transition import Transition
@@ -28,7 +28,7 @@ class DeepQLearningTrainer(Trainer):
     def __init__(self,
                  model: keras.Model,
                  game: MarkovDecisionProcess,
-                 epsilon_function: EpsilonChangeFunction,
+                 epsilon_function: EpsilonUpdater,
                  transitions_per_episode: int = 1,
                  batch_size: int = 32,
                  discount: float = 0.95,

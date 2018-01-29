@@ -2,8 +2,8 @@ from keras import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
 
-from examples.cartpolePixels.cartPolePixelsGameInterface import CartPolePixelsGameInterface
-from source.epsilonChangeFunctions.epsilonChangeFunctions import ConstantEpsilonFunction
+from examples.cartPolePixels.cartPolePixelsGameInterface import CartPolePixelsGameInterface
+from source.epsilonUpdater.constantEpsilonUpdater import ConstantEpsilonUpdater
 from source.trainers.deepQLearningTrainer import DeepQLearningTrainer
 
 
@@ -13,7 +13,7 @@ class TrainingRoom():
         self.game = CartPolePixelsGameInterface()
         model = self.build_model()
 
-        epsilon_function = ConstantEpsilonFunction(initial_value=0.05)
+        epsilon_function = ConstantEpsilonUpdater(initial_value=0.05)
 
         self.trainer = DeepQLearningTrainer(
             model=model,

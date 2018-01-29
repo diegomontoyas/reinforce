@@ -1,9 +1,9 @@
 from keras import Sequential
-from keras.layers import Dense, Convolution2D, Flatten
+from keras.layers import Dense, Convolution2D, Flatten, MaxPooling2D
 from keras.optimizers import Adam
 
 from examples.trexPixels.trexInterface import TrexGameInterface
-from source.epsilonChangeFunctions.epsilonChangeFunctions import ConstMultiplierEpsilonDecayFunction
+from source.epsilonUpdater.constantMultiplierEpsilonUpdater import ConstMultiplierEpsilonUpdater
 from source.trainers.deepQLearningTrainer import DeepQLearningTrainer
 
 
@@ -14,7 +14,7 @@ class TrainingRoom:
         self.game = TrexGameInterface()
         model = self.build_model()
 
-        epsilon_function = ConstMultiplierEpsilonDecayFunction(
+        epsilon_function = ConstMultiplierEpsilonUpdater(
             initial_value=1,
             final_value=0.01,
             decay_multiplier=0.99999

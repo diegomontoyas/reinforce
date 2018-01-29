@@ -1,5 +1,5 @@
 
-class EpsilonChangeFunction:
+class EpsilonUpdater:
 
     def __init__(self, initial_value: float):
         self._epsilon = initial_value
