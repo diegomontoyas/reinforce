@@ -19,6 +19,7 @@ from source.utils.tensorboardLogger import TensorboardLogger
 
 import h5py
 
+
 class DeepQLearningTrainer(Trainer):
     """
     A trainer which uses Deep Q-Learning as algorithm.
@@ -43,6 +44,7 @@ class DeepQLearningTrainer(Trainer):
                  logging_dir: str = ANALYTICS_DIR,
                  episodes_between_checkpoints: int = None,
                  checkpoints_dir: str = CHECKPOINTS_DIR,
+                 use_double_q_learning: bool = True
                  ):
 
         """
@@ -76,7 +78,7 @@ class DeepQLearningTrainer(Trainer):
         else:
             self._logger = None
 
-        self._model = model
+        self._training_model = model
         self._game = game
         self._batch_size = batch_size
         self._replay_memory = replay_memory
@@ -96,18 +98,28 @@ class DeepQLearningTrainer(Trainer):
         else:
             self._min_transitions_until_training = min_transitions_until_training
 
-        self._is_training = False
-        self._current_episode = 0
-        self._target_episodes = 0
+        if use_double_q_learning:
+            self._action_prediction_model = keras.models.clone_model(model)
+        else:
+            self._action_prediction_model = self._training_model
 
-        self._preview_helper = LearningPreviewHelper(self._game_for_preview, self._model)
+        self._preview_helper = LearningPreviewHelper(self._game_for_preview, self._action_prediction_model)
+
+        self._is_training = False
+        self._current_transition = 0
+        self._transitions_since_last_training = 0
+        self._target_episodes = 0
+        self._current_episode = 0
 
         model.summary()
 
     def _prepare_for_training(self):
-        self._current_episode = 0
         self._game.reset()
+        self._current_episode = 0
         self._is_training = True
+        self._current_transition = 0
+        self._transitions_since_last_training = 0
+        self._target_episodes = 0
 
     def train(self, target_episodes: int):
         if self._is_training:
@@ -116,51 +128,49 @@ class DeepQLearningTrainer(Trainer):
         self._prepare_for_training()
         self._target_episodes = target_episodes
 
-        current_transition = 0
-        transitions_since_last_training = 0
-
         while self._current_episode < target_episodes:
+            self._take_new_action()
 
-            action_to_take = self._action(self._game.state())
-            transition = self._game.take_action(action_to_take)
-            self._replay_memory.remember(transition)
-
-            transitions_since_last_training += 1
-
-            if self._logger is not None:
-                self._logger.log_transition_data(transition=current_transition,
-                                                 training_episode=self._current_episode,
-                                                 reward=transition.reward)
-
-            current_transition += 1
-
-            if transition.game_ended:
-                self._game.reset()
-
-            if transitions_since_last_training >= self._transitions_per_episode \
+            if self._transitions_since_last_training >= self._transitions_per_episode \
                     and len(self._replay_memory) >= self._min_transitions_until_training:
 
-                mini_batch = self._replay_memory.sample(self._batch_size)
-                loss = self._train(mini_batch)
-
-                if self._logger is not None:
-                    self._logger.log_training_episode_data(episode=self._current_episode,
-                                                           loss=loss,
-                                                           epsilon=self._epsilon_function.epsilon)
-
-                self._print(num_episodes=self._current_episode,
-                            epsilon=self._epsilon_function.epsilon,
-                            loss=loss)
-
-                self._preview_if_needed()
-                self._save_model_if_needed()
-
-                transitions_since_last_training = 0
-                self._current_episode += 1
+                self._train_episode()
 
         self._finish_training()
 
-    def _train(self, transitions_batch: List[Transition]) -> float:
+    def _take_new_action(self):
+        action_to_take = self._action(self._game.state())
+        transition = self._game.take_action(action_to_take)
+        self._replay_memory.remember(transition)
+
+        self._transitions_since_last_training += 1
+        self._current_transition += 1
+
+        if self._logger is not None:
+            self._logger.log_transition_data(transition=self._current_transition,
+                                             training_episode=self._current_episode,
+                                             reward=transition.reward)
+
+        if transition.game_ended:
+            self._game.reset()
+
+    def _train_episode(self):
+        mini_batch = self._replay_memory.sample(self._batch_size)
+        loss = self._train_with_batch(mini_batch)
+        if self._logger is not None:
+            self._logger.log_training_episode_data(episode=self._current_episode,
+                                                   loss=loss,
+                                                   epsilon=self._epsilon_function.epsilon)
+        self._print(num_episodes=self._current_episode,
+                    epsilon=self._epsilon_function.epsilon,
+                    loss=loss)
+
+        self._preview_if_needed()
+        self._save_model_if_needed()
+        self._transitions_since_last_training = 0
+        self._current_episode += 1
+
+    def _train_with_batch(self, transitions_batch: List[Transition]) -> float:
         """
         Update the Q-Values from the given batch of transitions
         :param transitions_batch: List of transitions
@@ -170,17 +180,19 @@ class DeepQLearningTrainer(Trainer):
         batch_previous_states = []
 
         for transition in transitions_batch:
-            predicted_Q_values = self._model.predict(np.array([transition.previous_state]))[0]
+            predicted_Q_values = self._training_model.predict(np.array([transition.previous_state]))[0]
 
             # Update rule
             if transition.game_ended:
                 updated_Q_value_prediction = transition.reward
 
             else:
-                predicted_next_actions_Q_values = self._model.predict(np.array([transition.new_state]))[0]
-                max_next_action_Q_Value = max(predicted_next_actions_Q_values)
+                new_state_as_list = np.array([transition.new_state])
+                predicted_next_best_action = np.argmax(self._action_prediction_model.predict(new_state_as_list)[0])
 
-                updated_Q_value_prediction = (transition.reward + self._discount * max_next_action_Q_Value)
+                predicted_next_actions_Q_values = self._training_model.predict(new_state_as_list)[0]
+                max_next_best_action_Q_Value = predicted_next_actions_Q_values[predicted_next_best_action]
+                updated_Q_value_prediction = (transition.reward + self._discount * max_next_best_action_Q_Value)
 
             predicted_Q_values[transition.action] = updated_Q_value_prediction
 
@@ -189,14 +201,14 @@ class DeepQLearningTrainer(Trainer):
 
         self._epsilon_function.step()
 
-        loss = self._model.train_on_batch(x=np.array(batch_previous_states), y=np.array(batch_updated_Q_values))
+        loss = self._training_model.train_on_batch(x=np.array(batch_previous_states), y=np.array(batch_updated_Q_values))
         return loss
 
     def _finish_training(self):
         self._is_training = False
 
     def _action(self, state) -> int:
-        return e_greedy_action(state, self._model, self._epsilon_function.epsilon, self._game.num_actions)
+        return e_greedy_action(state, self._action_prediction_model, self._epsilon_function.epsilon, self._game.num_actions)
 
     def _preview_if_needed(self):
         if self._episodes_between_previews is None or self._current_episode % self._episodes_between_previews != 0:
@@ -216,4 +228,4 @@ class DeepQLearningTrainer(Trainer):
         if not os.path.exists(self._checkpoints_dir):
             os.makedirs(self._checkpoints_dir)
 
-        self._model.save(filepath=self._checkpoints_dir + "/" + self._session_id + ".kerasmodel", overwrite=True)
+        self._training_model.save(filepath=self._checkpoints_dir + "/" + self._session_id + ".kerasmodel", overwrite=True)
