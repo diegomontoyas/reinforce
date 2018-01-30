@@ -102,7 +102,7 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
     def _send_key(self, key: Keys):
         if key is not None:
-            self._canvas.send_keys(key)
+            self._driver.switch_to.active_element.send_keys(key)
 
     def _restart_game(self):
         if not self._evaluate_js("window.runner.activated"):
