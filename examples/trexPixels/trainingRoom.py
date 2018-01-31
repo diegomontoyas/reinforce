@@ -4,6 +4,7 @@ from keras.optimizers import Adam
 
 from examples.trexPixels.trexInterface import TrexGameInterface
 from source.epsilonUpdater.constantMultiplierEpsilonUpdater import ConstMultiplierEpsilonUpdater
+from source.epsilonUpdater.sinusoidalEpsilonUpdater import SinusoidalEpsilonUpdater
 from source.replayMemory.simpleDequeReplayMemory import SimpleDequeReplayMemory
 from source.trainers.deepQLearningTrainer import DeepQLearningTrainer
 
@@ -18,8 +19,10 @@ class TrainingRoom:
         epsilon_function = ConstMultiplierEpsilonUpdater(
             initial_value=1,
             final_value=0.01,
-            decay_multiplier=0.99999
+            decay_multiplier=0.99995
         )
+
+        epsilon_function = SinusoidalEpsilonUpdater(x_step_value=0.0003)
 
         self.trainer = DeepQLearningTrainer(
             model=model,
@@ -33,20 +36,24 @@ class TrainingRoom:
             episodes_between_previews=250,
             preview_num_episodes=1,
             episodes_between_checkpoints=50,
-            log_analytics=True
+            log_analytics=True,
+            episodes_between_models_sync=350
         )
 
     def build_model(self):
         model = Sequential()
-        shape = self.game.state_shape
+        shape = self.game.state_shape # 30X40
 
-        model.add(Convolution2D(filters=32, kernel_size=3, strides=(2,2), input_shape=shape, activation='relu'))
+        model.add(Convolution2D(filters=32, kernel_size=3, strides=(1,1), input_shape=shape, activation='relu'))
+        model.add(Convolution2D(filters=32, kernel_size=3, strides=(1,1), input_shape=shape, activation='relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+
         model.add(Flatten())
-        model.add(Dense(256, activation='relu'))
-        model.add(Dense(128, activation='relu'))
+        model.add(Dense(24, activation='relu'))
+        model.add(Dense(24, activation='relu'))
         model.add(Dense(self.game.num_actions))
 
-        model.compile(loss='mse', optimizer=Adam(lr=0.001))
+        model.compile(loss='mse', optimizer=Adam(lr=0.0001))
         return model
 
     def start_training(self):

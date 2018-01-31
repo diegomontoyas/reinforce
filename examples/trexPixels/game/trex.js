@@ -82,7 +82,7 @@ var DEFAULT_WIDTH = 600;
  * Frames per second.
  * @const
  */
-var FPS = 30;
+var FPS = 60;
 
 /** @const */
 var IS_HIDPI = window.devicePixelRatio > 1;
@@ -107,9 +107,9 @@ Runner.config = {
   ACCELERATION: 0,//0.001,
   BG_CLOUD_SPEED: 0.2,
   BOTTOM_PAD: 10,
-  CLEAR_TIME: 3000,
+  CLEAR_TIME: 0,//3000,
   CLOUD_FREQUENCY: 0.5,
-  GAMEOVER_CLEAR_TIME: 750,
+  GAMEOVER_CLEAR_TIME: 0,
   GAP_COEFFICIENT: 0.6,
   GRAVITY: 0.6,
   INITIAL_JUMP_VELOCITY: 12,
@@ -123,7 +123,7 @@ Runner.config = {
   MIN_JUMP_HEIGHT: 35,
   MOBILE_SPEED_COEFFICIENT: 1.2,
   RESOURCE_TEMPLATE_ID: 'audio-resources',
-  SPEED: 20,//6,
+  SPEED: 8,//6,
   SPEED_DROP_COEFFICIENT: 3,
   ARCADE_MODE_INITIAL_TOP_POSITION: 35,
   ARCADE_MODE_TOP_POSITION_PERCENT: 0.1
@@ -765,14 +765,14 @@ Runner.prototype = {
 
     this.tRex.update(100, Trex.status.CRASHED);
 
-    // Game over panel.
-    if (!this.gameOverPanel) {
-      this.gameOverPanel = new GameOverPanel(this.canvas,
-          this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
-          this.dimensions);
-    } else {
-      this.gameOverPanel.draw();
-    }
+    // // Game over panel.
+    // if (!this.gameOverPanel) {
+    //   this.gameOverPanel = new GameOverPanel(this.canvas,
+    //       this.spriteDef.TEXT_SPRITE, this.spriteDef.RESTART,
+    //       this.dimensions);
+    // } else {
+    //   this.gameOverPanel.draw();
+    // }
 
     // Update the high score.
     if (this.distanceRan > this.highestScore) {
@@ -1489,7 +1489,7 @@ Obstacle.types = [
     yPos: [ 100, 75, 50 ], // Variable height.
     yPosMobile: [ 100, 50 ], // Variable height mobile.
     multipleSpeed: 999,
-    minSpeed: 8.5,
+    minSpeed: 0,//8.5,
     minGap: 150,
     collisionBoxes: [
       new CollisionBox(15, 15, 16, 5),

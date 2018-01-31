@@ -28,9 +28,10 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
     ACTION_KEYS = [None, Keys.SPACE]
 
     # The duration of a single transition, in seconds
-    TRANSITION_DURATION = 0.05
+    TRANSITION_DURATION = 0
 
-    LOOSING_REWARD = -500
+    # The percentage of the width of the screen that is contemplated by the state
+    WIDTH_PERCENT_FIELD_OF_VISION = 0.4
 
     def __init__(self):
         super().__init__()
@@ -86,7 +87,7 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         image = skimage.color.rgb2gray(image)  # Convert to grayscale
         image = skimage.transform.resize(image, output_shape=(30, 50))  # Downscale by a factor of 6
 
-        slice_end = int(image.shape[1]*0.8)
+        slice_end = int(image.shape[1]*TrexGameInterface.WIDTH_PERCENT_FIELD_OF_VISION)
         image = image[:, :slice_end]
 
         return image.reshape(image.shape[0], image.shape[1], 1)
@@ -107,7 +108,7 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
     def _restart_game(self):
         if not self._evaluate_js("window.runner.activated"):
             self._send_key(Keys.SPACE)
-            time.sleep(1)
+            time.sleep(0.8)
 
         self._driver.execute_script("window.runner.restart()")
 
@@ -130,39 +131,25 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
             if self._last_transition is not None and not self._last_transition.game_ended:
                 self._last_transition.game_ended = True
                 self._last_transition.new_state = self.state()
-                self._last_transition.reward = TrexGameInterface.LOOSING_REWARD
+                self._last_transition.reward = -1
 
                 self._suspend_browser()
-                print("Reward: {}. Lost: {}".format(self._last_transition.reward, True))
+                # print("Reward: {}. Lost: {}".format(self._last_transition.reward, True))
                 return self._last_transition
 
             self._restart_game()
 
         previous_state = self.state()
-        score_before = self._current_score()
 
         self._send_key(TrexGameInterface.ACTION_KEYS[action])
         # print("Choosing: {}".format(action))
         time.sleep(TrexGameInterface.TRANSITION_DURATION)
-
         is_final = self._is_game_over()
-        reward = self._current_score() - score_before
-
-        while reward == 0 and not self._is_game_over():
-            time.sleep(0.5)
-            print("Waiting...")
-            reward = self._current_score() - score_before
-
         next_state = self.state()
+        reward = -1 if is_final else 1
 
         self._suspend_browser()
-
-        if is_final:
-            reward = TrexGameInterface.LOOSING_REWARD
-        else:
-            reward = min(reward, 8)
-
-        print("Reward: {}. Lost: {}".format(reward, is_final))
+        # print("Reward: {}. Lost: {}".format(reward, is_final))
 
         transition = Transition(previous_state, action, reward, next_state, is_final)
         self._last_transition = transition
