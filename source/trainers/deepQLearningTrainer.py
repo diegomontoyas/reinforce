@@ -14,7 +14,7 @@ from source.markovDecisionProcess.transition import Transition
 from source.replayMemory.replayMemory import ReplayMemory
 from source.trainers.trainer import Trainer
 from source.utils.epsilonGreedyFunction import e_greedy_action
-from source.utils.learningPreviewHelper import LearningPreviewHelper
+from source.utils.previewHelper import PreviewHelper
 from source.utils.tensorboardLogger import TensorboardLogger
 
 import h5py
@@ -105,7 +105,7 @@ class DeepQLearningTrainer(Trainer):
             self._target_model = self._online_model
 
         self._episodes_between_models_sync = episodes_between_models_sync
-        self._preview_helper = LearningPreviewHelper(self._game_for_preview, self._target_model)
+        self._preview_helper = PreviewHelper(self._game_for_preview, self._target_model)
 
         self._is_training = False
         self._current_transition = 0

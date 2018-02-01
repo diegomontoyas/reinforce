@@ -1,10 +1,16 @@
 import keras
+import os
+import sys
+import importlib
+import ntpath
 
+from examples.trexPixels.trexInterface import TrexGameInterface
 from source.gameInterface import GameInterface
 from source.markovDecisionProcess.actionProvider import ActionProvider, Epsilon0ActionProvider
+from source.utils.utils import get_options
 
 
-class LearningPreviewHelper:
+class PreviewHelper:
 
     def __init__(self, game: GameInterface, model: keras.Model):
         self._game = game
