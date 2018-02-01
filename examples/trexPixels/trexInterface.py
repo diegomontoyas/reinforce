@@ -1,3 +1,4 @@
+import inspect
 import signal
 import time
 
@@ -13,6 +14,7 @@ from PIL import Image
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
+from definitions import HOME_DIR
 from source.gameInterface import GameInterface
 from source.markovDecisionProcess.actionProvider import ActionProvider
 from source.markovDecisionProcess.markovDecisionProcess import MarkovDecisionProcess
@@ -28,7 +30,7 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
     ACTION_KEYS = [None, Keys.SPACE]
 
     # The duration of a single transition, in seconds
-    TRANSITION_DURATION = 0
+    TRANSITION_DURATION = 0.05
 
     # The percentage of the width of the screen that is contemplated by the state
     WIDTH_PERCENT_FIELD_OF_VISION = 0.4
@@ -40,8 +42,9 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
         self._is_browser_suspended = False
 
-        self._driver = webdriver.Firefox(executable_path=os.path.abspath("../../venv/geckodriver"))
-        self._driver.get("file:///" + os.path.abspath("./game/trex_container.html"))
+        self._driver = webdriver.Firefox(executable_path=os.path.abspath(HOME_DIR+"/venv/geckodriver"))
+        self_dir = os.path.dirname(os.path.abspath(inspect.stack()[0][1]))
+        self._driver.get("file:///" + self_dir + "/game/trex_container.html")
         self._browser_process = psutil.Process(self._driver.service.process.pid).children()[0]
 
         self._canvas = self._driver.find_element_by_id(TrexGameInterface.CANVAS_ELEMENT_ID)
@@ -66,7 +69,7 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         # last_frame = self._last_frame if self._last_frame is not None else current_frame
         #
         # mixed_frame = (current_frame + last_frame/2)/2
-        return self._current_state_frame()
+        return self._current_state_frame().flatten()
 
     def _current_state_frame(self) -> np.ndarray:
 
@@ -105,12 +108,15 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         if key is not None:
             self._driver.switch_to.active_element.send_keys(key)
 
-    def _restart_game(self):
+    def _restart_and_pause(self):
+        self._resume_browser()
+
         if not self._evaluate_js("window.runner.activated"):
             self._send_key(Keys.SPACE)
             time.sleep(0.8)
 
         self._driver.execute_script("window.runner.restart()")
+        self._suspend_browser()
 
     def _suspend_browser(self):
         # self._driver.execute_script("window.runner.stop()")
@@ -126,18 +132,14 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
 
         self._resume_browser()
 
-        while self._is_game_over():
+        if self._is_game_over() and self._last_transition is not None and not self._last_transition.game_ended:
 
-            if self._last_transition is not None and not self._last_transition.game_ended:
-                self._last_transition.game_ended = True
-                self._last_transition.new_state = self.state()
-                self._last_transition.reward = -1
-
-                self._suspend_browser()
-                # print("Reward: {}. Lost: {}".format(self._last_transition.reward, True))
-                return self._last_transition
-
-            self._restart_game()
+            self._last_transition.game_ended = True
+            self._last_transition.new_state = self.state()
+            self._last_transition.reward = -1
+            self._suspend_browser()
+            # print("Reward: {}. Lost: {}".format(self._last_transition.reward, True))
+            return self._last_transition
 
         previous_state = self.state()
 
@@ -156,21 +158,18 @@ class TrexGameInterface(GameInterface, MarkovDecisionProcess):
         return transition
 
     def reset(self):
-        pass
+        self._restart_and_pause()
 
     def play_episode(self, action_provider: ActionProvider, display: bool=True) -> float:
-
         self.reset()
-        self._resume_browser()
 
-        while self._is_game_over():
-            self._restart_game()
-
-        while not self._is_game_over():
-            action = action_provider.action(self.state())
-            self.take_action(action)
+        game_ended = False
+        while not game_ended:
             self._resume_browser()
+            action = action_provider.action(self.state())
+            game_ended = self.take_action(action).game_ended
 
+        self._resume_browser()
         score = self._current_score()
         print("Game finished with score: {}".format(score))
         return score
