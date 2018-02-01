@@ -44,13 +44,8 @@ class TrainingRoom:
         model = Sequential()
         shape = self.game.state_shape # 30X40
 
-        model.add(Convolution2D(filters=32, kernel_size=3, strides=(1,1), input_shape=shape, activation='relu'))
-        model.add(Convolution2D(filters=32, kernel_size=3, strides=(1,1), input_shape=shape, activation='relu'))
-        model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-
-        model.add(Flatten())
-        model.add(Dense(24, activation='relu'))
-        model.add(Dense(24, activation='relu'))
+        model.add(Dense(256, input_dim=shape[0], activation='relu'))
+        model.add(Dense(64, activation='relu'))
         model.add(Dense(self.game.num_actions))
 
         model.compile(loss='mse', optimizer=Adam(lr=0.0001))
